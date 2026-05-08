@@ -28,6 +28,34 @@
         <div class="app-subtitle">Trading Performance Tracker</div>
       </div>
     </div>
+
+    <!-- ── Account Switcher ──────────────────────────────────────── -->
+    <div class="account-switcher" id="accountSwitcher">
+      <button class="account-btn" id="accountBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span class="account-btn-name" id="accountBtnName">Select Account</span>
+        <svg class="account-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div class="account-dropdown" id="accountDropdown">
+        <div class="account-dropdown-header">Trading Accounts</div>
+        <div class="account-list" id="accountList"></div>
+        <div class="account-dropdown-footer">
+          <button class="account-new-btn" id="newAccountBtn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New Account
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="header-actions">
       <button class="theme-toggle" id="themeToggle" title="Toggle theme">
         <svg id="themeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -47,114 +75,164 @@
           <polyline points="1 4 1 10 7 10"/>
           <path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
         </svg>
-        Reset All
+        Reset
       </button>
     </div>
   </header>
 
-  <!-- ── Stats Bar ───────────────────────────────────────────────── -->
-  <div class="stats-bar" id="statsBar">
-    <div class="stat-card starting-capital-card">
-      <div class="stat-label">Starting Capital</div>
-      <div class="capital-input-wrap">
-        <span class="capital-prefix">$</span>
-        <input type="number" class="capital-input" id="capitalInput" value="10000" step="100" title="Click to edit starting capital"/>
+  <!-- ── Empty State ────────────────────────────────────────────── -->
+  <div class="empty-state-screen" id="emptyStateScreen" style="display:none;">
+    <div class="empty-state-content">
+      <div class="empty-logo-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+          <polyline points="16 7 22 7 22 13"/>
+        </svg>
       </div>
-      <div class="stat-meta">Click amount to edit</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Account Balance</div>
-      <div class="stat-value" id="balanceVal">$10,000.00</div>
-      <div class="stat-meta">Starting capital + total PNL</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Monthly PNL</div>
-      <div class="stat-value" id="monthPnlVal">$0.00</div>
-      <div class="stat-meta" id="monthPnlMeta">No trades this month</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Total PNL (All Time)</div>
-      <div class="stat-value" id="allTimePnlVal">$0.00</div>
-      <div class="stat-meta" id="allTimeMeta">Across all months</div>
+      <h1 class="empty-title">Welcome to PNL Journal</h1>
+      <p class="empty-subtitle">Track your trading performance across multiple accounts.<br/>Create your first account to get started.</p>
+      <button class="btn-create-first" id="createFirstAccBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Create Your First Trading Account
+      </button>
+      <p class="empty-hint">You can manage multiple accounts — broker accounts, paper trading, funded accounts, and more.</p>
     </div>
   </div>
 
-  <!-- ── Main Grid ───────────────────────────────────────────────── -->
-  <div class="main-grid">
+  <!-- ── App Content (shown when accounts exist) ────────────────── -->
+  <div id="appContent" style="display:none;">
 
-    <!-- Calendar -->
-    <div class="calendar-section">
-      <div class="calendar-nav">
-        <div class="nav-arrows">
-          <button class="nav-btn" id="prevMonth" title="Previous month">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </button>
-          <button class="nav-btn" id="nextMonth" title="Next month">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
+    <!-- ── Stats Bar ──────────────────────────────────────────────── -->
+    <div class="stats-bar" id="statsBar">
+      <div class="stat-card starting-capital-card">
+        <div class="stat-label">Starting Capital</div>
+        <div class="capital-input-wrap">
+          <span class="capital-prefix">$</span>
+          <input type="number" class="capital-input" id="capitalInput" value="10000" step="100" title="Click to edit starting capital"/>
         </div>
-        <div class="calendar-nav-title" id="calNavTitle">May 2026</div>
-        <button class="btn btn-ghost" id="todayBtn">Today</button>
+        <div class="stat-meta">Click amount to edit</div>
       </div>
-      <div class="calendar-grid" id="calendarGrid"></div>
-      <div class="legend">
-        <div class="legend-item"><div class="legend-dot green"></div> Profitable day</div>
-        <div class="legend-item"><div class="legend-dot red"></div> Loss day</div>
-        <div class="legend-item"><div class="legend-dot neutral"></div> No entry</div>
+      <div class="stat-card">
+        <div class="stat-label">Account Balance</div>
+        <div class="stat-value" id="balanceVal">$10,000.00</div>
+        <div class="stat-meta">Starting capital + total PNL</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Monthly PNL</div>
+        <div class="stat-value" id="monthPnlVal">$0.00</div>
+        <div class="stat-meta" id="monthPnlMeta">No trades this month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total PNL (All Time)</div>
+        <div class="stat-value" id="allTimePnlVal">$0.00</div>
+        <div class="stat-meta" id="allTimeMeta">Across all months</div>
       </div>
     </div>
 
-    <!-- Sidebar -->
-    <div class="sidebar">
+    <!-- ── Main Grid ──────────────────────────────────────────────── -->
+    <div class="main-grid">
 
-      <!-- Win Rate -->
-      <div class="panel">
-        <div class="panel-title">Win Rate — <span id="winRateMonth">this month</span></div>
-        <div class="win-rate-display">
-          <div class="win-rate-num" id="winRateNum">—</div>
-          <div class="win-rate-breakdown" id="winRateBreakdown">No trades logged</div>
+      <!-- Calendar -->
+      <div class="calendar-section">
+        <div class="calendar-nav">
+
+          <!-- Left: year back + month back -->
+          <div class="nav-arrows">
+            <button class="nav-btn nav-year-btn" id="prevYear" title="Previous year">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/>
+              </svg>
+            </button>
+            <button class="nav-btn" id="prevMonth" title="Previous month">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Center: month/year title + offset badge -->
+          <div class="calendar-nav-center">
+            <div class="calendar-nav-title" id="calNavTitle">May 2026</div>
+            <div class="calendar-nav-offset" id="calNavOffset"></div>
+          </div>
+
+          <!-- Right: month forward + year forward + today -->
+          <div class="nav-arrows">
+            <button class="nav-btn" id="nextMonth" title="Next month">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+            <button class="nav-btn nav-year-btn" id="nextYear" title="Next year">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
+              </svg>
+            </button>
+          </div>
+
+          <button class="btn btn-ghost nav-today-btn" id="todayBtn">Today</button>
+
         </div>
-        <div class="win-rate-bar">
-          <div class="win-rate-fill" id="winRateFill" style="width:0%"></div>
-        </div>
-        <div class="win-breakdown-row">
-          <span class="win-label">Win days</span>
-          <span class="win-val green" id="winDaysVal">0</span>
-        </div>
-        <div class="win-breakdown-row">
-          <span class="win-label">Loss days</span>
-          <span class="win-val red" id="lossDaysVal">0</span>
-        </div>
-        <div class="win-breakdown-row">
-          <span class="win-label">Total trades</span>
-          <span class="win-val" id="totalTradesVal">0</span>
-        </div>
-        <div class="win-breakdown-row">
-          <span class="win-label">Streak</span>
-          <span class="win-val" id="streakVal">—</span>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot green"></div> Profitable day</div>
+          <div class="legend-item"><div class="legend-dot red"></div> Loss day</div>
+          <div class="legend-item"><div class="legend-dot neutral"></div> No entry</div>
         </div>
       </div>
 
-      <!-- Chart -->
-      <div class="panel">
-        <div class="panel-title">Balance Trajectory</div>
-        <div class="chart-container">
-          <canvas id="balanceChart"></canvas>
+      <!-- Sidebar -->
+      <div class="sidebar">
+
+        <!-- Win Rate -->
+        <div class="panel">
+          <div class="panel-title">Win Rate — <span id="winRateMonth">this month</span></div>
+          <div class="win-rate-display">
+            <div class="win-rate-num" id="winRateNum">—</div>
+            <div class="win-rate-breakdown" id="winRateBreakdown">No trades logged</div>
+          </div>
+          <div class="win-rate-bar">
+            <div class="win-rate-fill" id="winRateFill" style="width:0%"></div>
+          </div>
+          <div class="win-breakdown-row">
+            <span class="win-label">Win days</span>
+            <span class="win-val green" id="winDaysVal">0</span>
+          </div>
+          <div class="win-breakdown-row">
+            <span class="win-label">Loss days</span>
+            <span class="win-val red" id="lossDaysVal">0</span>
+          </div>
+          <div class="win-breakdown-row">
+            <span class="win-label">Total trades</span>
+            <span class="win-val" id="totalTradesVal">0</span>
+          </div>
+          <div class="win-breakdown-row">
+            <span class="win-label">Streak</span>
+            <span class="win-val" id="streakVal">—</span>
+          </div>
         </div>
-      </div>
 
-      <!-- Month Summary -->
-      <div class="panel">
-        <div class="panel-title">Month Summary</div>
-        <div class="month-summary-list" id="monthSummaryList"></div>
-      </div>
+        <!-- Chart -->
+        <div class="panel">
+          <div class="panel-title">Balance Trajectory</div>
+          <div class="chart-container">
+            <canvas id="balanceChart"></canvas>
+          </div>
+        </div>
 
-    </div><!-- /sidebar -->
-  </div><!-- /main-grid -->
+        <!-- Month Summary -->
+        <div class="panel">
+          <div class="panel-title">Month Summary</div>
+          <div class="month-summary-list" id="monthSummaryList"></div>
+        </div>
+
+      </div><!-- /sidebar -->
+    </div><!-- /main-grid -->
+
+  </div><!-- /appContent -->
 </div><!-- /app-wrapper -->
 
 <!-- ── Day Entry Modal ─────────────────────────────────────────── -->
@@ -198,6 +276,41 @@
       <div class="modal-actions">
         <button class="btn-clear" id="clearDayBtn">Clear Day</button>
         <button class="btn-save" id="saveDayBtn">Save Entry</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Create Account Modal ────────────────────────────────────── -->
+<div class="modal-overlay" id="createAccOverlay">
+  <div class="modal create-acc-modal" id="createAccModal">
+    <div class="modal-header">
+      <div style="display:flex; flex-direction:column; gap:3px;">
+        <div class="modal-date" id="createAccTitle">New Trading Account</div>
+        <div class="modal-day-badge">Fill in the details below</div>
+      </div>
+      <button class="modal-close" id="createAccClose">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <label class="field-label" for="newAccName">Account Name</label>
+        <input type="text" class="field-input" id="newAccName" placeholder="e.g. Binance Futures, Paper Trading, FTMO..." maxlength="40"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="newAccBaseline">Starting Capital ($)</label>
+        <input type="number" class="field-input mono" id="newAccBaseline" placeholder="10000" step="100" min="0"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div class="save-feedback" id="createAccFeedback" style="opacity:0;"></div>
+      <div class="modal-actions">
+        <button class="btn-clear" id="createAccCancelBtn">Cancel</button>
+        <button class="btn-save" id="createAccSaveBtn">Create Account</button>
       </div>
     </div>
   </div>
