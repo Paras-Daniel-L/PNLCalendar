@@ -1141,3 +1141,702 @@ textarea.field-input {
 .create-acc-modal {
   max-width: 420px;
 }
+
+/* ================================================================
+   ACCOUNT OVERVIEW PANEL
+   ================================================================ */
+
+.overview-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+  overflow: hidden;
+  transition: box-shadow 0.18s ease;
+}
+.overview-panel:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Overview Header ────────────────────────────────────────────── */
+.overview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+}
+
+.overview-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.overview-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.overview-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+
+.overview-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 500;
+  padding: 4px 10px 4px 8px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.overview-toggle:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.toggle-chevron {
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* collapsed state */
+.overview-panel.collapsed .toggle-chevron {
+  transform: rotate(180deg);
+}
+
+/* ── Overview Body (collapsible) ────────────────────────────────── */
+.overview-body {
+  max-height: 1200px;
+  overflow: hidden;
+  transition: max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity    0.22s ease;
+  opacity: 1;
+}
+.overview-panel.collapsed .overview-body {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* ── Metric Cards Grid ──────────────────────────────────────────── */
+.overview-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.ov-card {
+  background: var(--surface);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.12s ease;
+}
+.ov-card:hover { background: var(--surface-2); }
+
+.ov-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+}
+
+.ov-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+.ov-value.pos { color: var(--green-text); }
+.ov-value.neg { color: var(--red-text); }
+
+/* featured cards: first 4 — slightly larger number */
+.ov-card.featured .ov-value {
+  font-size: 1.7rem;
+}
+
+.ov-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* empty state inside metrics */
+.ov-empty {
+  grid-column: 1 / -1;
+  padding: 32px 24px;
+  text-align: center;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ── All-Time Chart ─────────────────────────────────────────────── */
+.overview-chart-section {
+  padding: 18px 20px 20px;
+}
+
+.overview-chart-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.overview-chart-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.overview-chart-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+.overview-chart-sub.pos { color: var(--green-text); }
+.overview-chart-sub.neg { color: var(--red-text); }
+
+.overview-chart-container {
+  position: relative;
+  height: 200px;
+}
+
+/* ================================================================
+   MONTHLY BREAKDOWN MODAL
+   ================================================================ */
+
+/* ── Gross PNL card clickable affordance ────────────────────────── */
+.ov-card[data-action="pnl-breakdown"] {
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+.ov-card[data-action="pnl-breakdown"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  transition: background 0.15s ease;
+  pointer-events: none;
+}
+.ov-card[data-action="pnl-breakdown"]:hover::after {
+  background: rgba(0, 0, 0, 0.025);
+}
+[data-theme="dark"] .ov-card[data-action="pnl-breakdown"]:hover::after {
+  background: rgba(255, 255, 255, 0.035);
+}
+.ov-card[data-action="pnl-breakdown"]:hover {
+  box-shadow: inset 0 0 0 1.5px var(--border-hover);
+}
+.ov-card[data-action="pnl-breakdown"]:active {
+  transform: scale(0.985);
+}
+
+/* drill-down hint icon */
+.ov-drill-hint {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.ov-card[data-action="pnl-breakdown"]:hover .ov-drill-hint {
+  opacity: 1;
+}
+
+/* ── Breakdown Modal ─────────────────────────────────────────────── */
+.breakdown-modal {
+  max-width: 560px;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Month List ──────────────────────────────────────────────────── */
+.breakdown-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+  min-height: 120px;
+}
+
+.breakdown-empty {
+  padding: 40px 24px;
+  text-align: center;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+/* ── Individual Month Row ────────────────────────────────────────── */
+.breakdown-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  position: relative;
+  transition: background 0.12s ease;
+  overflow: hidden;
+}
+.breakdown-row:hover { background: var(--surface-2); }
+
+/* faint magnitude bar that bleeds behind the row */
+.breakdown-row-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  pointer-events: none;
+  border-radius: 0;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.breakdown-row-bg.pos { background: rgba(26,122,68,0.045); }
+.breakdown-row-bg.neg { background: rgba(184,50,50,0.045); }
+[data-theme="dark"] .breakdown-row-bg.pos { background: rgba(77,200,122,0.055); }
+[data-theme="dark"] .breakdown-row-bg.neg { background: rgba(224,96,96,0.055); }
+
+/* Left col: month name + meta */
+.breakdown-left {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.breakdown-month-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.breakdown-meta {
+  font-size: 0.71rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Win-rate mini bar */
+.breakdown-bar-track {
+  flex: 1;
+  max-width: 80px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.breakdown-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.breakdown-bar-fill.pos { background: linear-gradient(90deg, var(--green-text), #34C96B); }
+.breakdown-bar-fill.neg { background: linear-gradient(90deg, var(--red-text), #E88888); }
+
+/* Right col: PNL amount */
+.breakdown-right {
+  text-align: right;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.breakdown-pnl {
+  font-family: 'DM Mono', monospace;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.breakdown-pnl.pos { color: var(--green-text); }
+.breakdown-pnl.neg { color: var(--red-text); }
+
+.breakdown-win-rate {
+  font-size: 0.69rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Divider between rows */
+.breakdown-row + .breakdown-row {
+  border-top: 1px solid var(--border);
+}
+
+/* ── Footer Summary ──────────────────────────────────────────────── */
+.breakdown-footer {
+  border-top: 1px solid var(--border);
+  padding: 14px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.breakdown-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.breakdown-footer-label { color: var(--text-secondary); }
+.breakdown-footer-val {
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.breakdown-footer-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.breakdown-footer-label.total {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+}
+.breakdown-footer-val.total {
+  font-size: 0.95rem;
+}
+.breakdown-footer-val.total.pos { color: var(--green-text); }
+.breakdown-footer-val.total.neg { color: var(--red-text); }
+
+/* ================================================================
+   RESPONSIVE DESIGN
+   ================================================================ */
+
+/* ── Global: no horizontal scroll; chart containers fill width ───── */
+body {
+  overflow-x: hidden;
+}
+
+.chart-container,
+.overview-chart-container {
+  width: 100%;
+}
+
+/* ── Tablet (≤1024px) ────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .app-wrapper {
+    padding: 22px 20px 52px;
+  }
+
+  /* Stats: 2-column grid */
+  .stats-bar {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  /* Main grid: calendar + sidebar stack */
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Overview metrics: tighter min card width */
+  .overview-metrics {
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  }
+
+  .ov-card.featured .ov-value {
+    font-size: 1.5rem;
+  }
+
+  /* Sidebar chart: slightly shorter */
+  .chart-container {
+    height: 160px;
+  }
+}
+
+/* ── Mobile (≤768px) ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+
+  .app-wrapper {
+    padding: 14px 14px 48px;
+  }
+
+  /* ── Header: logo + actions row 1; account switcher row 2 ─────── */
+  .app-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+  }
+
+  /* Push account switcher to its own full-width row */
+  .account-switcher {
+    order: 3;
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* ── Stats Bar: single column ────────────────────────────────── */
+  .stats-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .stat-card {
+    padding: 14px 16px;
+  }
+
+  .stat-value {
+    font-size: 1.3rem;
+  }
+
+  /* ── Overview Metrics: 2-column ──────────────────────────────── */
+  .overview-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ov-card {
+    padding: 14px 16px;
+  }
+
+  .ov-card.featured .ov-value {
+    font-size: 1.3rem;
+  }
+
+  .ov-value {
+    font-size: 1.15rem;
+  }
+
+  .overview-chart-container {
+    height: 160px;
+  }
+
+  /* ── Calendar Nav ────────────────────────────────────────────── */
+  .calendar-nav {
+    padding: 10px 12px;
+    gap: 4px;
+  }
+
+  .calendar-nav-title {
+    font-size: 0.88rem;
+  }
+
+  /* ── Calendar Grid: tighter cells, narrower week column ──────── */
+  .calendar-grid {
+    grid-template-columns: repeat(7, 1fr) 56px;
+  }
+
+  .day-header,
+  .week-header {
+    font-size: 0.6rem;
+    padding: 6px 0;
+  }
+
+  .calendar-day {
+    min-height: 62px;
+    padding: 5px 4px;
+  }
+
+  .day-num {
+    font-size: 0.68rem;
+    width: 18px;
+    height: 18px;
+    margin-bottom: 2px;
+  }
+
+  /* Keep today circle sized to match reduced day-num */
+  .calendar-day.today .day-num {
+    width: 18px;
+    height: 18px;
+  }
+
+  .day-pnl {
+    font-size: 0.67rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* Trade count is too noisy at this size */
+  .day-trades {
+    display: none;
+  }
+
+  .day-note-dot {
+    top: 5px;
+    right: 5px;
+    width: 4px;
+    height: 4px;
+  }
+
+  .week-total-cell {
+    padding: 6px 4px;
+  }
+
+  .week-total-label {
+    font-size: 0.52rem;
+    letter-spacing: 0.04em;
+  }
+
+  .week-total-val {
+    font-size: 0.67rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Legend ──────────────────────────────────────────────────── */
+  .legend {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 8px 14px;
+  }
+
+  /* ── Sidebar chart ───────────────────────────────────────────── */
+  .chart-container {
+    height: 150px;
+  }
+
+  /* ── Modals: 95% width, centred, 44px touch targets ─────────── */
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal {
+    width: 95%;
+    max-width: none;
+  }
+
+  .modal-header {
+    padding: 16px 18px 14px;
+  }
+
+  .modal-body {
+    padding: 16px 18px;
+  }
+
+  .modal-footer {
+    padding: 12px 18px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* 44 × 44px minimum touch target on the X button */
+  .modal-close {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+  }
+
+  /* 44px min-height on action buttons */
+  .btn-save {
+    min-height: 44px;
+    padding: 10px 20px;
+  }
+
+  .btn-clear {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  .create-acc-modal,
+  .breakdown-modal {
+    max-width: none;
+    width: 95%;
+  }
+
+  .breakdown-modal {
+    max-height: 88vh;
+  }
+
+  /* ── Monthly Breakdown rows ──────────────────────────────────── */
+  .breakdown-row {
+    gap: 10px;
+    padding: 10px 16px;
+  }
+
+  /* Win-rate mini bar is too small to be useful at this width */
+  .breakdown-bar-track {
+    display: none;
+  }
+
+  .breakdown-footer {
+    padding: 12px 16px 16px;
+  }
+}
+
+/* ── Small Mobile (≤400px): hide week column, true 7-col grid ────── */
+@media (max-width: 400px) {
+  .app-wrapper {
+    padding: 10px 10px 40px;
+  }
+
+  .calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  /* Remove week column from layout flow */
+  .week-header,
+  .week-total-cell {
+    display: none;
+  }
+
+  /* Saturday cells (7th in each visual row) no longer need a right border
+     blocked by the section's overflow:hidden, but be explicit */
+  .calendar-day:nth-child(7n) {
+    border-right: none;
+  }
+
+  /* Restore border on cells that the old 8n rule accidentally widened */
+  .calendar-day:nth-child(8n) {
+    border-right: 1px solid var(--border);
+  }
+
+  .calendar-day {
+    min-height: 52px;
+    padding: 4px 3px;
+  }
+
+  .day-pnl {
+    font-size: 0.6rem;
+  }
+
+  .stat-value {
+    font-size: 1.15rem;
+  }
+}

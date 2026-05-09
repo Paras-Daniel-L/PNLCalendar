@@ -163,6 +163,77 @@ function getStreak() {
   return { streak, type };
 }
 
+// ── All-Time Stats (comprehensive) ───────────────────────────────
+function calculateAllTimeStats() {
+  const acc = getCurrentAccount();
+  if (!acc) return null;
+
+  // Sort all logged entries chronologically
+  const entries = Object.entries(acc.logs)
+    .filter(([, d]) => d && d.pnl !== undefined && d.pnl !== null && d.pnl !== '')
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  const baseline = parseFloat(acc.baseline) || 0;
+
+  if (entries.length === 0) {
+    return {
+      grossPnl: 0, totalDays: 0, totalTrades: 0,
+      winDays: 0, lossDays: 0, winRate: null,
+      bestDay: null, bestKey: null,
+      worstDay: null, worstKey: null,
+      avgPerDay: null, streak: 0, streakType: null,
+      balanceSeries: [{ key: null, balance: baseline, pnl: 0 }],
+    };
+  }
+
+  let grossPnl = 0, totalTrades = 0, winDays = 0, lossDays = 0;
+  let bestDay = -Infinity, worstDay = Infinity;
+  let bestKey = null, worstKey = null;
+  const balanceSeries = [];
+  let running = baseline;
+
+  for (const [key, d] of entries) {
+    const p = parseFloat(d.pnl) || 0;
+    grossPnl   += p;
+    totalTrades += parseInt(d.trades) || 0;
+    if (p > 0)       winDays++;
+    else if (p < 0)  lossDays++;
+    if (p > bestDay)  { bestDay  = p; bestKey  = key; }
+    if (p < worstDay) { worstDay = p; worstKey = key; }
+    running += p;
+    balanceSeries.push({ key, balance: parseFloat(running.toFixed(2)), pnl: p });
+  }
+
+  const totalDays = entries.length;
+  const winRate   = totalDays > 0 ? Math.round((winDays / totalDays) * 100) : null;
+  const avgPerDay = totalDays > 0 ? grossPnl / totalDays : null;
+
+  // Streak: walk backwards from most recent
+  let streak = 0, streakType = null;
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const p = parseFloat(entries[i][1].pnl) || 0;
+    if (streakType === null) {
+      streakType = p >= 0 ? 'win' : 'loss';
+      streak = 1;
+    } else if ((streakType === 'win' && p >= 0) || (streakType === 'loss' && p < 0)) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  return {
+    grossPnl, totalDays, totalTrades,
+    winDays, lossDays, winRate,
+    bestDay:  bestKey  ? bestDay  : null,
+    bestKey,
+    worstDay: worstKey ? worstDay : null,
+    worstKey,
+    avgPerDay, streak, streakType,
+    balanceSeries,
+  };
+}
+
 // ── App Shell ─────────────────────────────────────────────────────
 function renderApp() {
   const hasAccounts  = state.accounts.length > 0 && state.currentAccountId;
@@ -179,6 +250,7 @@ function renderApp() {
     renderAccountSwitcher();
     renderCalendar();
     renderStats();
+    renderOverview();
     updateNavState();
   }
 }
@@ -260,6 +332,7 @@ function switchAccount(id) {
     renderAccountSwitcher();
     renderCalendar();
     renderStats();
+    renderOverview();
     content.classList.remove('fade-out');
   }, 180);
 }
@@ -704,17 +777,372 @@ function renderChart(capital) {
   });
 }
 
+// ── Overview Panel ────────────────────────────────────────────────
+let allTimeChartInstance = null;
+
+function renderOverview() {
+  const acc = getCurrentAccount();
+  if (!acc) return;
+
+  const stats    = calculateAllTimeStats();
+  const capital  = parseFloat(acc.baseline) || 0;
+  const balance  = capital + (stats ? stats.grossPnl : 0);
+  const metricsEl = document.getElementById('overviewMetrics');
+
+  if (!stats || stats.totalDays === 0) {
+    metricsEl.innerHTML =
+      `<div class="ov-empty">No trading data yet for <strong>${acc.name}</strong>.<br>
+       Click any day on the calendar below to log your first entry.</div>`;
+    renderAllTimeChart([], capital);
+    return;
+  }
+
+  // ── Format date label helper ──────────────────────────────────
+  function fmtDateLabel(key) {
+    if (!key) return '—';
+    const [y, m, d] = key.split('-');
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const label = `${MONTHS[parseInt(m) - 1]} ${parseInt(d)}`;
+    return parseInt(y) !== today.getFullYear() ? `${label} '${String(y).slice(-2)}` : label;
+  }
+
+  // ── Card definitions ──────────────────────────────────────────
+  const streakLabel = stats.streak > 0 && stats.streakType
+    ? `${stats.streak} ${stats.streakType === 'win' ? 'W' : 'L'}`
+    : '—';
+  const streakSub = stats.streakType
+    ? `${stats.streakType === 'win' ? 'winning' : 'losing'} streak`
+    : 'no data yet';
+
+  const cards = [
+    {
+      label:    'Gross PNL',
+      value:    fmtMoney(stats.grossPnl, true),
+      cls:      stats.grossPnl >= 0 ? 'pos' : 'neg',
+      sub:      `from ${fmtMoneyPlain(capital)} baseline`,
+      featured: true,
+    },
+    {
+      label:    'Account Balance',
+      value:    fmtMoneyPlain(balance),
+      cls:      balance >= capital ? 'pos' : 'neg',
+      sub:      `${balance >= capital ? '+' : ''}${((stats.grossPnl / capital) * 100).toFixed(1)}% return`,
+      featured: true,
+    },
+    {
+      label:    'Win Rate',
+      value:    stats.winRate !== null ? `${stats.winRate}%` : '—',
+      cls:      stats.winRate !== null ? (stats.winRate >= 50 ? 'pos' : 'neg') : '',
+      sub:      `${stats.winDays}W / ${stats.lossDays}L days`,
+      featured: true,
+    },
+    {
+      label:    'Current Streak',
+      value:    streakLabel,
+      cls:      stats.streakType === 'win' ? 'pos' : stats.streakType === 'loss' ? 'neg' : '',
+      sub:      streakSub,
+      featured: true,
+    },
+    {
+      label: 'Best Day',
+      value: stats.bestDay !== null ? fmtMoney(stats.bestDay, true) : '—',
+      cls:   'pos',
+      sub:   stats.bestKey ? fmtDateLabel(stats.bestKey) : '',
+    },
+    {
+      label: 'Worst Day',
+      value: stats.worstDay !== null ? fmtMoney(stats.worstDay, true) : '—',
+      cls:   'neg',
+      sub:   stats.worstKey ? fmtDateLabel(stats.worstKey) : '',
+    },
+    {
+      label: 'Avg PNL / Day',
+      value: stats.avgPerDay !== null ? fmtMoney(stats.avgPerDay, true) : '—',
+      cls:   stats.avgPerDay !== null ? (stats.avgPerDay >= 0 ? 'pos' : 'neg') : '',
+      sub:   'across all trading days',
+    },
+    {
+      label: 'Trading Days',
+      value: String(stats.totalDays),
+      cls:   '',
+      sub:   `${stats.winDays} wins · ${stats.lossDays} losses`,
+    },
+    {
+      label: 'Total Trades',
+      value: String(stats.totalTrades),
+      cls:   '',
+      sub:   stats.totalDays > 0
+        ? `~${(stats.totalTrades / stats.totalDays).toFixed(1)} per day`
+        : '',
+    },
+  ];
+
+  metricsEl.innerHTML = cards
+    .map((c, i) => `
+      <div class="ov-card${c.featured ? ' featured' : ''}${i === 0 ? '" data-action="pnl-breakdown' : ''}">
+        ${i === 0 ? `<svg class="ov-drill-hint" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/><polyline points="8 3 3 3 3 21 21 21 21 16"/></svg>` : ''}
+        <div class="ov-label">${c.label}</div>
+        <div class="ov-value ${c.cls}">${c.value}</div>
+        ${c.sub ? `<div class="ov-sub">${c.sub}</div>` : ''}
+      </div>`)
+    .join('');
+
+  renderAllTimeChart(stats.balanceSeries, capital);
+
+  // Update chart sub-label
+  const sub = document.getElementById('overviewChartSub');
+  if (sub) {
+    sub.textContent  = fmtMoney(stats.grossPnl, true);
+    sub.className    = `overview-chart-sub ${stats.grossPnl >= 0 ? 'pos' : 'neg'}`;
+  }
+}
+
+function renderAllTimeChart(series, capital) {
+  const canvas  = document.getElementById('allTimeChart');
+  const isDark  = document.documentElement.getAttribute('data-theme') === 'dark';
+
+  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
+  const textColor = isDark ? '#5C5955' : '#A09D97';
+  const MONTHS    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  if (allTimeChartInstance) { allTimeChartInstance.destroy(); allTimeChartInstance = null; }
+
+  // Empty state chart
+  if (!series || series.length === 0 || (series.length === 1 && !series[0].key)) {
+    allTimeChartInstance = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: ['—'],
+        datasets: [{ data: [capital], borderColor: gridColor, pointRadius: 0 }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false } },
+      },
+    });
+    return;
+  }
+
+  // Derive line colour from final balance vs baseline
+  const finalBalance = series[series.length - 1].balance;
+  const isPositive   = finalBalance >= capital;
+  const lineColor    = isDark
+    ? (isPositive ? '#4DC87A' : '#E06060')
+    : (isPositive ? '#1A7A44' : '#B83232');
+  const fillColor    = isDark
+    ? (isPositive ? 'rgba(77,200,122,0.08)' : 'rgba(224,96,96,0.08)')
+    : (isPositive ? 'rgba(26,122,68,0.07)'  : 'rgba(184,50,50,0.07)');
+
+  // Build labels: format key as "May 5" or "May '25"
+  const labels = series.map(({ key }) => {
+    const [y, m, d] = key.split('-');
+    const label = `${MONTHS[parseInt(m) - 1]} ${parseInt(d)}`;
+    return parseInt(y) !== today.getFullYear() ? `${label} '${String(y).slice(-2)}` : label;
+  });
+  const balances = series.map(s => s.balance);
+
+  // Prefix the chart with the baseline so it starts flat
+  const fullLabels   = ['Start', ...labels];
+  const fullBalances = [parseFloat(capital.toFixed(2)), ...balances];
+
+  allTimeChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: fullLabels,
+      datasets: [{
+        label: 'Balance',
+        data: fullBalances,
+        borderColor: lineColor,
+        backgroundColor: fillColor,
+        borderWidth: 2,
+        pointRadius: fullLabels.length <= 30 ? 3 : 0,
+        pointHoverRadius: 4,
+        pointBackgroundColor: lineColor,
+        pointBorderColor: 'transparent',
+        fill: true,
+        tension: 0.3,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isDark ? '#1E1C1A' : '#fff',
+          borderColor:     isDark ? '#2E2B27' : '#E8E5DF',
+          borderWidth: 1,
+          titleColor:  isDark ? '#F0EDE8' : '#1A1916',
+          bodyColor:   isDark ? '#908D87' : '#6B6860',
+          padding: 10,
+          callbacks: {
+            title: ctx => ctx[0].label,
+            label: ctx => ' Balance: ' + fmtMoneyPlain(ctx.raw),
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: gridColor, drawBorder: false },
+          ticks: {
+            color: textColor,
+            font: { family: "'DM Mono', monospace", size: 10 },
+            maxTicksLimit: 10,
+            maxRotation: 0,
+          },
+        },
+        y: {
+          grid: { color: gridColor, drawBorder: false },
+          ticks: {
+            color: textColor,
+            font: { family: "'DM Mono', monospace", size: 10 },
+            maxTicksLimit: 5,
+            callback: v => '$' + (Math.abs(v) >= 1000
+              ? (v / 1000).toFixed(1) + 'k'
+              : v.toFixed(0)),
+          },
+        },
+      },
+    },
+  });
+}
+
+// ── Monthly PNL Breakdown ─────────────────────────────────────────
+function aggregateMonthlyPNL() {
+  const acc = getCurrentAccount();
+  if (!acc) return [];
+
+  const MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
+
+  const map = {}; // "YYYY-MM" → { year, month, label, pnl, winDays, lossDays, tradedDays }
+
+  for (const [key, d] of Object.entries(acc.logs)) {
+    if (!d || d.pnl === undefined || d.pnl === null || d.pnl === '') continue;
+    const [y, m] = key.split('-');
+    const mk = `${y}-${m}`;
+    if (!map[mk]) {
+      map[mk] = {
+        year:       parseInt(y),
+        month:      parseInt(m) - 1,
+        label:      `${MONTH_NAMES[parseInt(m) - 1]} ${y}`,
+        pnl:        0,
+        winDays:    0,
+        lossDays:   0,
+        tradedDays: 0,
+      };
+    }
+    const p = parseFloat(d.pnl) || 0;
+    map[mk].pnl        += p;
+    map[mk].tradedDays++;
+    if (p > 0)      map[mk].winDays++;
+    else if (p < 0) map[mk].lossDays++;
+  }
+
+  // Sort reverse-chronologically (newest first)
+  return Object.values(map).sort((a, b) =>
+    b.year !== a.year ? b.year - a.year : b.month - a.month
+  );
+}
+
+function openMonthlyBreakdownModal() {
+  const acc = getCurrentAccount();
+  if (!acc) return;
+
+  const months = aggregateMonthlyPNL();
+
+  document.getElementById('breakdownAccName').textContent = acc.name;
+
+  const listEl = document.getElementById('breakdownList');
+  listEl.innerHTML = '';
+
+  if (months.length === 0) {
+    listEl.innerHTML = '<div class="breakdown-empty">No trading data logged yet.</div>';
+    document.getElementById('breakdownMonthCount').textContent   = '0';
+    document.getElementById('breakdownProfitMonths').textContent = '0';
+    document.getElementById('breakdownGrandTotal').textContent   = '$0.00';
+    document.getElementById('breakdownGrandTotal').className     = 'breakdown-footer-val total';
+    document.getElementById('breakdownOverlay').classList.add('active');
+    return;
+  }
+
+  // Max |PNL| across all months — used to scale the magnitude background bar
+  const maxAbsPnl = Math.max(...months.map(m => Math.abs(m.pnl)), 1);
+
+  months.forEach(m => {
+    const winRate = m.tradedDays > 0
+      ? Math.round((m.winDays / m.tradedDays) * 100) : 0;
+    const pnlCls  = m.pnl >= 0 ? 'pos' : 'neg';
+    // Scale faint background: min 8%, max 90%
+    const magPct  = Math.max(8, Math.round((Math.abs(m.pnl) / maxAbsPnl) * 88));
+
+    const row = document.createElement('div');
+    row.className = 'breakdown-row';
+    row.innerHTML = `
+      <div class="breakdown-row-bg ${pnlCls}" style="width:${magPct}%"></div>
+      <div class="breakdown-left">
+        <div class="breakdown-month-name">${m.label}</div>
+        <div class="breakdown-meta">
+          <span>${m.tradedDays} day${m.tradedDays !== 1 ? 's' : ''}</span>
+          <span>·</span>
+          <span>${m.winDays}W&nbsp;/&nbsp;${m.lossDays}L</span>
+        </div>
+      </div>
+      <div class="breakdown-bar-track" title="${winRate}% win rate">
+        <div class="breakdown-bar-fill ${pnlCls}" style="width:${winRate}%"></div>
+      </div>
+      <div class="breakdown-right">
+        <div class="breakdown-pnl ${pnlCls}">${fmtMoney(m.pnl, true)}</div>
+        <div class="breakdown-win-rate">${winRate}% win rate</div>
+      </div>
+    `;
+    listEl.appendChild(row);
+  });
+
+  // Footer totals
+  const grossPnl     = months.reduce((s, m) => s + m.pnl, 0);
+  const profitMonths = months.filter(m => m.pnl >= 0).length;
+  const gtEl         = document.getElementById('breakdownGrandTotal');
+
+  document.getElementById('breakdownMonthCount').textContent   = months.length;
+  document.getElementById('breakdownProfitMonths').textContent = `${profitMonths} / ${months.length}`;
+  gtEl.textContent = fmtMoney(grossPnl, true);
+  gtEl.className   = `breakdown-footer-val total ${grossPnl >= 0 ? 'pos' : 'neg'}`;
+
+  document.getElementById('breakdownOverlay').classList.add('active');
+}
+
+function closeMonthlyBreakdownModal() {
+  document.getElementById('breakdownOverlay').classList.remove('active');
+}
+
+// ── Breakdown modal event listeners ──────────────────────────────
+document.getElementById('breakdownClose').addEventListener('click', closeMonthlyBreakdownModal);
+document.getElementById('breakdownOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeMonthlyBreakdownModal();
+});
+
+// Event delegation: click Gross PNL card → open breakdown
+document.getElementById('overviewMetrics').addEventListener('click', e => {
+  const card = e.target.closest('[data-action="pnl-breakdown"]');
+  if (card) openMonthlyBreakdownModal();
+});
+
 // ── Day Entry Modal ───────────────────────────────────────────────
 function openModal(key, day) {
   activeDate = key;
 
   const [y, m] = key.split('-');
-  const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(key.split('-')[2]));
+  const dateObj = new Date(parseInt(y), parseInt(m) - 1, day);
   const DAY_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   document.getElementById('modalDate').textContent =
-    `${DAY_NAMES[dateObj.getDay()]}, ${MONTH_NAMES[parseInt(m) - 1]} ${key.split('-')[2]}`;
+    `${DAY_NAMES[dateObj.getDay()]}, ${MONTH_NAMES[parseInt(m) - 1]} ${day}`;
 
   const data = getDayData(key);
   document.getElementById('pnlInput').value    = data?.pnl    ?? '';
@@ -768,6 +1196,7 @@ function saveDay() {
   updateModalBadge(pnl);
   renderCalendar();
   renderStats();
+  renderOverview();
   showToast('Entry saved ✓');
 }
 
@@ -786,6 +1215,7 @@ function clearDay() {
 
   renderCalendar();
   renderStats();
+  renderOverview();
   showToast('Day cleared');
 }
 
@@ -813,6 +1243,7 @@ function applyTheme(theme) {
   state.theme = theme;
   document.getElementById('themeIcon').innerHTML = theme === 'dark' ? MOON_ICON : SUN_ICON;
   if (chartInstance) renderStats();
+  if (allTimeChartInstance) renderOverview();
 }
 
 // ── Event Listeners ───────────────────────────────────────────────
@@ -865,10 +1296,14 @@ document.getElementById('capitalInput').addEventListener('input', e => {
     acc.baseline = parseFloat(e.target.value) || 0;
     saveState();
     renderStats();
+    renderOverview();
   }
 });
 
-document.getElementById('capitalInput').addEventListener('blur', () => renderStats());
+document.getElementById('capitalInput').addEventListener('blur', () => {
+  renderStats();
+  renderOverview();
+});
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   const acc = getCurrentAccount();
@@ -880,14 +1315,24 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     saveState();
     renderCalendar();
     renderStats();
+    renderOverview();
     showToast('Account data reset');
   }
 });
 
-document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('overviewToggle').addEventListener('click', () => {
+  const panel = document.getElementById('overviewPanel');
+  const label = document.getElementById('toggleLabel');
+  const isCollapsed = panel.classList.toggle('collapsed');
+  label.textContent = isCollapsed ? 'Show' : 'Hide';
+  // Save collapsed state
+  state.overviewCollapsed = isCollapsed;
+  saveState();
+});
 document.getElementById('modalOverlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeModal();
 });
+document.getElementById('modalClose').addEventListener('click', closeModal);
 document.getElementById('saveDayBtn').addEventListener('click', saveDay);
 document.getElementById('clearDayBtn').addEventListener('click', clearDay);
 
@@ -896,6 +1341,7 @@ document.addEventListener('keydown', e => {
     closeModal();
     closeCreateAccountModal();
     closeAccountDropdown();
+    closeMonthlyBreakdownModal();
   }
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && activeDate) saveDay();
 
@@ -924,4 +1370,11 @@ document.addEventListener('keydown', e => {
   applyTheme(state.theme || 'light');
   renderApp();
   updateNavState();
+  // Restore overview collapsed state
+  if (state.overviewCollapsed) {
+    const panel = document.getElementById('overviewPanel');
+    const label = document.getElementById('toggleLabel');
+    if (panel) panel.classList.add('collapsed');
+    if (label) label.textContent = 'Show';
+  }
 })();

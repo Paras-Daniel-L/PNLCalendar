@@ -132,6 +132,37 @@
       </div>
     </div>
 
+    <!-- ── Account Overview Panel ───────────────────────────────── -->
+    <div class="overview-panel" id="overviewPanel">
+      <div class="overview-header">
+        <div class="overview-heading">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="6" height="18" rx="1"/><rect x="9" y="8" width="6" height="13" rx="1"/><rect x="16" y="13" width="6" height="8" rx="1"/>
+          </svg>
+          <span class="overview-title">Account Overview</span>
+          <span class="overview-badge">All-Time</span>
+        </div>
+        <button class="overview-toggle" id="overviewToggle" title="Collapse overview">
+          <svg class="toggle-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"/>
+          </svg>
+          <span class="toggle-label" id="toggleLabel">Hide</span>
+        </button>
+      </div>
+      <div class="overview-body" id="overviewBody">
+        <div class="overview-metrics" id="overviewMetrics"></div>
+        <div class="overview-chart-section">
+          <div class="overview-chart-header">
+            <span class="overview-chart-title">Balance Trajectory — All Time</span>
+            <span class="overview-chart-sub" id="overviewChartSub"></span>
+          </div>
+          <div class="overview-chart-container">
+            <canvas id="allTimeChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Main Grid ──────────────────────────────────────────────── -->
     <div class="main-grid">
 
@@ -313,6 +344,45 @@
         <button class="btn-save" id="createAccSaveBtn">Create Account</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ── Monthly PNL Breakdown Modal ────────────────────────────── -->
+<div class="modal-overlay" id="breakdownOverlay">
+  <div class="modal breakdown-modal" id="breakdownModal">
+
+    <div class="modal-header">
+      <div style="display:flex; flex-direction:column; gap:3px;">
+        <div class="modal-date">Monthly PNL Breakdown</div>
+        <div class="modal-day-badge" id="breakdownAccName">Account</div>
+      </div>
+      <button class="modal-close" id="breakdownClose">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Scrollable month list -->
+    <div class="breakdown-list" id="breakdownList"></div>
+
+    <!-- Footer summary -->
+    <div class="breakdown-footer">
+      <div class="breakdown-footer-row">
+        <span class="breakdown-footer-label">Months traded</span>
+        <span class="breakdown-footer-val" id="breakdownMonthCount">—</span>
+      </div>
+      <div class="breakdown-footer-row">
+        <span class="breakdown-footer-label">Profitable months</span>
+        <span class="breakdown-footer-val" id="breakdownProfitMonths">—</span>
+      </div>
+      <div class="breakdown-footer-divider"></div>
+      <div class="breakdown-footer-row">
+        <span class="breakdown-footer-label total">All-Time Gross PNL</span>
+        <span class="breakdown-footer-val total" id="breakdownGrandTotal">—</span>
+      </div>
+    </div>
+
   </div>
 </div>
 
