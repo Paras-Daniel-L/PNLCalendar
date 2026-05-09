@@ -32,6 +32,11 @@ function fmtMoneyPlain(val) {
   return '$' + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function getTradeCount(data) {
+  if (!data) return 0;
+  return data.numTrades != null ? parseInt(data.numTrades) || 0 : parseInt(data.trades) || 0;
+}
+
 function getDayData(key) {
   const acc = getCurrentAccount();
   if (!acc) return null;
@@ -57,7 +62,7 @@ function getAllTimeStats() {
       totalPnl += p;
       if (p > 0) wins++;
       else if (p < 0) losses++;
-      trades += parseInt(d.trades) || 0;
+      trades += getTradeCount(d);
     }
   }
   return { totalPnl, wins, losses, trades };
@@ -75,7 +80,7 @@ function getMonthStats(year, month) {
       const p = parseFloat(d.pnl) || 0;
       total += p;
       tradedDays++;
-      trades += parseInt(d.trades) || 0;
+      trades += getTradeCount(d);
       if (p > 0) wins++;
       else if (p < 0) losses++;
       if (p > bestDay)  { bestDay  = p; bestKey  = k; }
@@ -146,7 +151,7 @@ function calculateAllTimeStats() {
   for (const [key, d] of entries) {
     const p = parseFloat(d.pnl) || 0;
     grossPnl   += p;
-    totalTrades += parseInt(d.trades) || 0;
+    totalTrades += getTradeCount(d);
     if (p > 0)       winDays++;
     else if (p < 0)  lossDays++;
     if (p > bestDay)  { bestDay  = p; bestKey  = key; }
@@ -518,10 +523,11 @@ function renderCalendar() {
         pnlEl.textContent = fmtMoney(p);
         el.appendChild(pnlEl);
 
-        if (cell.data.trades) {
+        const tradeCount = getTradeCount(cell.data);
+        if (tradeCount > 0) {
           const trEl = document.createElement('div');
-          trEl.className   = 'day-trades';
-          trEl.textContent = `${cell.data.trades} trade${parseInt(cell.data.trades) !== 1 ? 's' : ''}`;
+          trEl.className = 'day-trades';
+          trEl.innerHTML  = `${tradeCount} <span class="trades-label">Trades</span>`;
           el.appendChild(trEl);
         }
       }
@@ -1105,17 +1111,19 @@ function openModal(key, day) {
 
   const data = getDayData(key);
   document.getElementById('pnlInput').value    = data?.pnl    ?? '';
-  document.getElementById('tradesInput').value  = data?.trades ?? '';
+  document.getElementById('tradesInput').value  = data?.numTrades ?? data?.trades ?? '';
   document.getElementById('notesInput').value   = data?.notes  ?? '';
 
   updateModalBadge(data?.pnl);
   document.getElementById('saveFeedback').classList.remove('show');
+  document.getElementById('saveValidationMsg').classList.remove('show');
   document.getElementById('modalOverlay').classList.add('active');
   setTimeout(() => document.getElementById('pnlInput').focus(), 220);
 }
 
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('active');
+  document.getElementById('saveValidationMsg').classList.remove('show');
   activeDate = null;
 }
 
@@ -1136,16 +1144,37 @@ function saveDay() {
   const acc = getCurrentAccount();
   if (!acc) return;
 
-  const pnl    = document.getElementById('pnlInput').value;
-  const trades = document.getElementById('tradesInput').value;
-  const notes  = document.getElementById('notesInput').value;
+  const pnlRaw    = document.getElementById('pnlInput').value;
+  const tradesRaw = document.getElementById('tradesInput').value;
+  const notes     = document.getElementById('notesInput').value;
+  const msgEl     = document.getElementById('saveValidationMsg');
 
-  if (pnl === '' && trades === '' && !notes.trim()) {
+  const pnlFilled   = pnlRaw.trim() !== '';
+  const tradesFilled = tradesRaw.trim() !== '';
+  const pnlValid    = pnlFilled && !isNaN(parseFloat(pnlRaw));
+  const tradesValid  = tradesFilled && parseInt(tradesRaw) >= 1;
+
+  if (pnlFilled || tradesFilled) {
+    if (!pnlValid || !tradesValid) {
+      msgEl.textContent = !pnlValid
+        ? 'Enter a valid PNL amount to save.'
+        : 'Trade count must be at least 1 to save.';
+      msgEl.classList.add('show');
+      return;
+    }
+  }
+
+  msgEl.classList.remove('show');
+
+  const numTrades = tradesValid ? parseInt(tradesRaw) : 0;
+
+  if (!pnlFilled && !tradesFilled && !notes.trim()) {
     delete acc.logs[activeDate];
     if (window.cloudDeleteLog) window.cloudDeleteLog(acc.id, activeDate);
   } else {
-    acc.logs[activeDate] = { pnl, trades, notes };
-    if (window.cloudSaveLog) window.cloudSaveLog(acc.id, activeDate, { pnl, trades, notes });
+    const payload = { pnl: pnlRaw, numTrades, notes };
+    acc.logs[activeDate] = payload;
+    if (window.cloudSaveLog) window.cloudSaveLog(acc.id, activeDate, payload);
   }
 
   const fb = document.getElementById('saveFeedback');
@@ -1170,6 +1199,7 @@ function clearDay() {
   document.getElementById('pnlInput').value    = '';
   document.getElementById('tradesInput').value = '';
   document.getElementById('notesInput').value  = '';
+  document.getElementById('saveValidationMsg').classList.remove('show');
   updateModalBadge(undefined);
 
   renderCalendar();
