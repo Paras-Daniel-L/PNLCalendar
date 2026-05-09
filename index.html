@@ -502,6 +502,7 @@
   let currentUid    = null;
   let unsubAccounts = null;
   let unsubLogs     = null;
+  let unsubHp       = null;
 
   // ── Firestore Write Helpers (called by script.js) ─────────────────
   window.cloudSaveLog = (accountId, date, data) =>
@@ -532,6 +533,35 @@
     logsSnap.docs.forEach(d => batch.delete(d.ref));
     return batch.commit();
   };
+
+  // ── High Probability: Firestore Helpers ───────────────────────────
+  window.cloudSaveHpSetup = (id, data) =>
+    setDoc(doc(db, 'users', currentUid, 'highProbability', id), data);
+
+  window.cloudDeleteHpSetup = (id) =>
+    deleteDoc(doc(db, 'users', currentUid, 'highProbability', id));
+
+  // Real-time HP listener — updates script.js state via callback
+  function startHpListener(uid) {
+    if (unsubHp) { unsubHp(); unsubHp = null; }
+
+    // Signal loading state before first snapshot arrives
+    if (typeof window.onHpUpdate === 'function') window.onHpUpdate([], true);
+
+    unsubHp = onSnapshot(
+      collection(db, 'users', uid, 'highProbability'),
+      snap => {
+        const setups = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        if (typeof window.onHpUpdate === 'function') window.onHpUpdate(setups, false);
+      },
+      _err => {
+        if (typeof window.onHpUpdate === 'function') window.onHpUpdate([], false);
+        if (typeof showToast === 'function') showToast('Could not load setups — check connection');
+      }
+    );
+  }
 
   // ── Real-time Logs Listener ───────────────────────────────────────
   window.setupLogsListener = (accountId) => {
@@ -602,12 +632,19 @@
         }
       );
 
+      // Start High Probability real-time listener
+      startHpListener(user.uid);
+
     } else {
       currentUid           = null;
       window.currentUserId = null;
 
       if (unsubAccounts) { unsubAccounts(); unsubAccounts = null; }
       if (unsubLogs)     { unsubLogs();     unsubLogs    = null; }
+      if (unsubHp)       { unsubHp();       unsubHp      = null; }
+
+      // Reset HP state so stale data never bleeds into next login
+      if (typeof window.onHpUpdate === 'function') window.onHpUpdate([], false);
 
       state.accounts          = [];
       state.currentAccountId  = null;

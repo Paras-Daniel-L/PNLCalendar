@@ -1363,33 +1363,62 @@ document.addEventListener('keydown', e => {
   applyTheme('light');
   updateNavState();
 })();
-// ── High Probability Setups ───────────────────────────────────────
-let hpSetups = JSON.parse(localStorage.getItem('hp_setups') || '[]');
+// ── High Probability Setups (Firestore-synced) ───────────────────
+let hpSetups  = [];   // populated by Firestore onSnapshot via onHpUpdate
+let hpLoading = false; // true while the first snapshot is in flight
 
-function hpSave() {
-  localStorage.setItem('hp_setups', JSON.stringify(hpSetups));
+// ── Firestore callback (called from the module script) ────────────
+window.onHpUpdate = function (setups, loading) {
+  hpSetups  = setups;
+  hpLoading = loading;
+  renderHpList();
+};
+
+// ── Unique ID generator (no external lib needed) ──────────────────
+function hpGenId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
+// ── Render ────────────────────────────────────────────────────────
 function renderHpList() {
   const list = document.getElementById('hpList');
+  if (!list) return;
   list.innerHTML = '';
 
+  // Loading skeleton
+  if (hpLoading) {
+    list.innerHTML = `
+      <div class="hp-skeleton">
+        <div class="hp-skeleton-item"></div>
+        <div class="hp-skeleton-item"></div>
+        <div class="hp-skeleton-item" style="width:70%"></div>
+      </div>`;
+    return;
+  }
+
+  // Empty state
   if (hpSetups.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'hp-empty';
-    empty.textContent = 'No setups yet.\nClick "Add Setup" to save your first chart link.';
+    empty.innerHTML = `
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:10px;opacity:.35">
+        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+        <polyline points="16 7 22 7 22 13"/>
+      </svg>
+      <div>No setups yet.</div>
+      <div style="margin-top:4px">Click <strong>Add Setup</strong> to save your first chart link.</div>`;
     list.appendChild(empty);
     return;
   }
 
-  hpSetups.forEach((setup, i) => {
+  hpSetups.forEach(setup => {
     const a = document.createElement('a');
     a.className = 'hp-item';
     a.href      = setup.url;
     a.target    = '_blank';
     a.rel       = 'noopener noreferrer';
 
-    // Icon
+    // Chart icon
     const icon = document.createElement('div');
     icon.className = 'hp-item-icon';
     icon.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1402,7 +1431,7 @@ function renderHpList() {
     name.className   = 'hp-item-name';
     name.textContent = setup.name;
 
-    // External link icon
+    // External-link icon
     const linkIcon = document.createElement('span');
     linkIcon.className = 'hp-item-link-icon';
     linkIcon.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1411,19 +1440,27 @@ function renderHpList() {
       <line x1="10" y1="14" x2="21" y2="3"/>
     </svg>`;
 
-    // Delete button
+    // Delete button — calls Firestore, not local mutation
     const del = document.createElement('button');
     del.className = 'hp-item-delete';
     del.title     = 'Remove setup';
     del.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
     </svg>`;
-    del.addEventListener('click', e => {
+    del.addEventListener('click', async e => {
       e.preventDefault();
       e.stopPropagation();
-      hpSetups.splice(i, 1);
-      hpSave();
-      renderHpList();
+      if (!window.cloudDeleteHpSetup) return;
+      del.style.opacity = '0.4';
+      del.style.pointerEvents = 'none';
+      try {
+        await window.cloudDeleteHpSetup(setup.id);
+        // onSnapshot will call onHpUpdate → renderHpList automatically
+      } catch {
+        del.style.opacity = '';
+        del.style.pointerEvents = '';
+        showToast('Failed to delete setup — try again');
+      }
     });
 
     a.appendChild(icon);
@@ -1434,9 +1471,11 @@ function renderHpList() {
   });
 }
 
+// ── Drawer open / close ───────────────────────────────────────────
 function openHpDrawer() {
   document.getElementById('hpDrawer').classList.add('open');
   document.getElementById('hpTriggerTab').classList.add('open');
+  // renderHpList is driven by onHpUpdate; call once to paint current state
   renderHpList();
 }
 
@@ -1445,8 +1484,9 @@ function closeHpDrawer() {
   document.getElementById('hpTriggerTab').classList.remove('open');
 }
 
+// ── URL Modal open / close ────────────────────────────────────────
 function openHpModal() {
-  document.getElementById('hpUrlInput').value    = '';
+  document.getElementById('hpUrlInput').value         = '';
   document.getElementById('hpModalError').textContent = '';
   document.getElementById('hpModalOverlay').classList.add('active');
   setTimeout(() => document.getElementById('hpUrlInput').focus(), 80);
@@ -1456,16 +1496,15 @@ function closeHpModal() {
   document.getElementById('hpModalOverlay').classList.remove('active');
 }
 
-function saveHpSetup() {
+// ── Save to Firestore ─────────────────────────────────────────────
+async function saveHpSetup() {
   const raw   = document.getElementById('hpUrlInput').value.trim();
   const errEl = document.getElementById('hpModalError');
+  const saveBtn = document.getElementById('hpModalSave');
 
-  if (!raw) {
-    errEl.textContent = 'Please enter a URL.';
-    return;
-  }
+  if (!raw) { errEl.textContent = 'Please enter a URL.'; return; }
 
-  // Auto-prepend https:// if missing scheme
+  // Auto-prepend scheme if missing
   let url = raw;
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
 
@@ -1474,12 +1513,31 @@ function saveHpSetup() {
     return;
   }
 
-  const num = hpSetups.length + 1;
-  hpSetups.push({ name: `Setup-${num}`, url });
-  hpSave();
-  renderHpList();
-  closeHpModal();
-  showToast(`Setup-${num} added ✓`);
+  if (!window.cloudSaveHpSetup) {
+    errEl.textContent = 'Not signed in — please refresh and try again.';
+    return;
+  }
+
+  // Optimistic UI: disable button while saving
+  const origText       = saveBtn.textContent;
+  saveBtn.textContent  = 'Saving…';
+  saveBtn.disabled     = true;
+
+  const id   = hpGenId();
+  const num  = hpSetups.length + 1;
+  const data = { name: `Setup-${num}`, url, createdAt: Date.now() };
+
+  try {
+    await window.cloudSaveHpSetup(id, data);
+    // onSnapshot fires → onHpUpdate → renderHpList
+    closeHpModal();
+    showToast(`Setup-${num} saved ✓`);
+  } catch {
+    errEl.textContent = 'Save failed — check your connection and try again.';
+  } finally {
+    saveBtn.textContent = origText;
+    saveBtn.disabled    = false;
+  }
 }
 
 // ── HP Event Listeners ────────────────────────────────────────────
