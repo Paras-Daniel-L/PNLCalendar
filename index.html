@@ -12,7 +12,7 @@
 </head>
 <body>
 
-<div class="app-wrapper">
+<div class="app-wrapper" id="mainApp" style="display:none">
 
   <!-- ── Header ─────────────────────────────────────────────────── -->
   <header class="app-header">
@@ -70,6 +70,7 @@
           <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
         </svg>
       </button>
+      <button class="btn btn-ghost" id="signOutBtn" title="Sign out">Sign Out</button>
       <button class="btn btn-danger" id="resetBtn">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="1 4 1 10 7 10"/>
@@ -266,6 +267,34 @@
   </div><!-- /appContent -->
 </div><!-- /app-wrapper -->
 
+<!-- ── Login Modal ───────────────────────────────────────────────── -->
+<div class="modal-overlay login-overlay active" id="loginOverlay">
+  <div class="modal login-modal">
+    <div class="login-logo">
+      <div class="logo-icon login-logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+          <polyline points="16 7 22 7 22 13"/>
+        </svg>
+      </div>
+    </div>
+    <div class="login-title">PNL Journal</div>
+    <div class="login-subtitle">Sign in to continue</div>
+    <div class="login-fields">
+      <div class="field-group">
+        <label class="field-label" for="loginEmail">Email</label>
+        <input type="email" class="field-input" id="loginEmail" placeholder="you@example.com" autocomplete="email"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="loginPassword">Password</label>
+        <input type="password" class="field-input" id="loginPassword" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <button class="btn-save login-submit-btn" id="loginSubmitBtn">Sign In</button>
+  </div>
+</div>
+
 <!-- ── Day Entry Modal ─────────────────────────────────────────── -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modal">
@@ -390,5 +419,174 @@
 <div class="toast" id="toast"></div>
 
 <script src="script.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
+    from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getFirestore, collection, doc, setDoc, deleteDoc, getDocs, getDoc, onSnapshot, writeBatch }
+    from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // PASTE YOUR FIREBASE CONFIG OBJECT HERE
+  const firebaseConfig = {
+    apiKey: "AIzaSyANBk3Z0zC8byZamYDmhh1bfq4zOwmdtqM",
+    authDomain: "pnlcalendar.firebaseapp.com",
+    projectId: "pnlcalendar",
+    storageBucket: "pnlcalendar.firebasestorage.app",
+    messagingSenderId: "985927089036",
+    appId: "1:985927089036:web:cee22ebb46f65dc78fb4a9"
+  };
+
+  const firebaseApp = initializeApp(firebaseConfig);
+  const auth = getAuth(firebaseApp);
+  const db   = getFirestore(firebaseApp);
+  window.db  = db;
+
+  let currentUid    = null;
+  let unsubAccounts = null;
+  let unsubLogs     = null;
+
+  // ── Firestore Write Helpers (called by script.js) ─────────────────
+  window.cloudSaveLog = (accountId, date, data) =>
+    setDoc(doc(db, 'users', currentUid, 'accounts', accountId, 'logs', date), data);
+
+  window.cloudDeleteLog = (accountId, date) =>
+    deleteDoc(doc(db, 'users', currentUid, 'accounts', accountId, 'logs', date));
+
+  window.cloudSaveAccount = (accountId, metadata) =>
+    setDoc(doc(db, 'users', currentUid, 'accounts', accountId), metadata);
+
+  window.cloudDeleteAccount = async (accountId) => {
+    const logsRef  = collection(db, 'users', currentUid, 'accounts', accountId, 'logs');
+    const logsSnap = await getDocs(logsRef);
+    const batch    = writeBatch(db);
+    logsSnap.docs.forEach(d => batch.delete(d.ref));
+    batch.delete(doc(db, 'users', currentUid, 'accounts', accountId));
+    return batch.commit();
+  };
+
+  window.cloudSavePrefs = (prefs) =>
+    setDoc(doc(db, 'users', currentUid), prefs, { merge: true });
+
+  window.cloudResetLogs = async (accountId) => {
+    const logsRef  = collection(db, 'users', currentUid, 'accounts', accountId, 'logs');
+    const logsSnap = await getDocs(logsRef);
+    const batch    = writeBatch(db);
+    logsSnap.docs.forEach(d => batch.delete(d.ref));
+    return batch.commit();
+  };
+
+  // ── Real-time Logs Listener ───────────────────────────────────────
+  window.setupLogsListener = (accountId) => {
+    if (unsubLogs) { unsubLogs(); unsubLogs = null; }
+    if (!accountId || !currentUid) return;
+
+    unsubLogs = onSnapshot(
+      collection(db, 'users', currentUid, 'accounts', accountId, 'logs'),
+      snap => {
+        const acc = (state.accounts || []).find(a => a.id === accountId);
+        if (!acc) return;
+        acc.logs = {};
+        snap.docs.forEach(d => { acc.logs[d.id] = d.data(); });
+        renderCalendar();
+        renderStats();
+        renderOverview();
+      }
+    );
+  };
+
+  // ── Auth State Management ─────────────────────────────────────────
+  onAuthStateChanged(auth, async user => {
+    if (user) {
+      currentUid             = user.uid;
+      window.currentUserId   = user.uid;
+
+      // Load saved prefs before rendering to avoid flicker
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      if (userSnap.exists()) {
+        const d = userSnap.data();
+        if (d.currentAccountId) state.currentAccountId = d.currentAccountId;
+        if (d.theme) { state.theme = d.theme; applyTheme(d.theme); }
+        if (d.overviewCollapsed) {
+          state.overviewCollapsed = true;
+          const panel = document.getElementById('overviewPanel');
+          const label = document.getElementById('toggleLabel');
+          if (panel) panel.classList.add('collapsed');
+          if (label) label.textContent = 'Show';
+        }
+      }
+
+      document.getElementById('loginOverlay').classList.remove('active');
+      document.getElementById('mainApp').style.display = '';
+
+      // Listen to accounts collection in real-time
+      if (unsubAccounts) unsubAccounts();
+      unsubAccounts = onSnapshot(
+        collection(db, 'users', user.uid, 'accounts'),
+        snap => {
+          const prevLogsMap = {};
+          (state.accounts || []).forEach(a => { prevLogsMap[a.id] = a.logs || {}; });
+
+          state.accounts = snap.docs.map(d => ({
+            id: d.id,
+            ...d.data(),
+            logs: prevLogsMap[d.id] || {}
+          }));
+
+          if (!state.accounts.find(a => a.id === state.currentAccountId)) {
+            state.currentAccountId = state.accounts.length > 0 ? state.accounts[0].id : null;
+          }
+
+          renderApp();
+
+          if (state.currentAccountId) {
+            window.setupLogsListener(state.currentAccountId);
+          }
+        }
+      );
+
+    } else {
+      currentUid           = null;
+      window.currentUserId = null;
+
+      if (unsubAccounts) { unsubAccounts(); unsubAccounts = null; }
+      if (unsubLogs)     { unsubLogs();     unsubLogs    = null; }
+
+      state.accounts          = [];
+      state.currentAccountId  = null;
+
+      document.getElementById('loginOverlay').classList.add('active');
+      document.getElementById('mainApp').style.display = 'none';
+    }
+  });
+
+  // ── Login Form Handler ────────────────────────────────────────────
+  document.getElementById('loginSubmitBtn').addEventListener('click', async () => {
+    const email    = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errEl    = document.getElementById('loginError');
+    const btn      = document.getElementById('loginSubmitBtn');
+
+    if (!email || !password) {
+      errEl.textContent = 'Please enter your email and password.';
+      return;
+    }
+    try {
+      errEl.textContent = '';
+      btn.textContent   = 'Signing in…';
+      btn.disabled      = true;
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (e) {
+      errEl.textContent = e.message.replace('Firebase: ', '').replace(/ \(auth\/.*?\)\.?$/, '');
+      btn.textContent   = 'Sign In';
+      btn.disabled      = false;
+    }
+  });
+
+  document.getElementById('loginPassword').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('loginSubmitBtn').click();
+  });
+
+  document.getElementById('signOutBtn').addEventListener('click', () => signOut(auth));
+</script>
 </body>
 </html>

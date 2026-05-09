@@ -1,58 +1,9 @@
 /* ================================================================
-   PNL Journal — script.js  (Multi-Account Edition v3)
+   PNL Journal — script.js  (Firebase Edition)
    ================================================================ */
 
-// ── Storage Keys ──────────────────────────────────────────────────
-const STORAGE_KEY_V3 = 'pnl_journal_v3';
-const STORAGE_KEY_V2 = 'pnl_journal_v2'; // legacy key for migration
-
-// ── Data Migration from v2 ────────────────────────────────────────
-function migrateFromV2() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_V2);
-    if (!raw) return null;
-    const old = JSON.parse(raw);
-    if (!old) return null;
-
-    const id = String(Date.now());
-    console.info('[PNL Journal] Migrating v2 data → "My First Account"');
-    return {
-      accounts: [{
-        id,
-        name: 'My First Account',
-        baseline: parseFloat(old.startingCapital) || 10000,
-        logs: old.days || {},
-        createdAt: new Date().toISOString(),
-      }],
-      currentAccountId: id,
-      theme: old.theme || 'light',
-    };
-  } catch (e) {
-    return null;
-  }
-}
-
-// ── Load / Save State ─────────────────────────────────────────────
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_V3);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.accounts)) return parsed;
-    }
-  } catch (e) {}
-
-  const migrated = migrateFromV2();
-  if (migrated) return migrated;
-
-  return { accounts: [], currentAccountId: null, theme: 'light' };
-}
-
-function saveState() {
-  localStorage.setItem(STORAGE_KEY_V3, JSON.stringify(state));
-}
-
-let state = loadState();
+// ── Runtime State (populated by Firestore onSnapshot) ─────────────
+let state = { accounts: [], currentAccountId: null, theme: 'light' };
 
 // ── Account Accessors ─────────────────────────────────────────────
 function getCurrentAccount() {
@@ -322,7 +273,8 @@ function renderAccountSwitcher() {
 // ── Account Switch with Fade ──────────────────────────────────────
 function switchAccount(id) {
   state.currentAccountId = id;
-  saveState();
+  if (window.cloudSavePrefs)    window.cloudSavePrefs({ currentAccountId: id });
+  if (window.setupLogsListener) window.setupLogsListener(id);
 
   const content = document.getElementById('appContent');
   content.classList.add('fade-out');
@@ -355,7 +307,10 @@ function deleteAccount(id, name) {
     state.currentAccountId = state.accounts.length > 0 ? state.accounts[0].id : null;
   }
 
-  saveState();
+  if (window.cloudDeleteAccount) window.cloudDeleteAccount(id);
+  if (window.cloudSavePrefs)     window.cloudSavePrefs({ currentAccountId: state.currentAccountId });
+  if (window.setupLogsListener)  window.setupLogsListener(state.currentAccountId);
+
   renderApp();
   showToast(`"${name}" deleted`);
 }
@@ -413,10 +368,14 @@ function submitCreateAccount() {
     return;
   }
 
-  const id = String(Date.now());
-  state.accounts.push({ id, name, baseline, logs: {}, createdAt: new Date().toISOString() });
+  const id        = String(Date.now());
+  const createdAt = new Date().toISOString();
+  state.accounts.push({ id, name, baseline, logs: {}, createdAt });
   state.currentAccountId = id;
-  saveState();
+
+  if (window.cloudSaveAccount) window.cloudSaveAccount(id, { name, baseline, createdAt });
+  if (window.cloudSavePrefs)   window.cloudSavePrefs({ currentAccountId: id });
+
   closeCreateAccountModal();
   renderApp();
   showToast(`"${name}" created ✓`);
@@ -1183,11 +1142,11 @@ function saveDay() {
 
   if (pnl === '' && trades === '' && !notes.trim()) {
     delete acc.logs[activeDate];
+    if (window.cloudDeleteLog) window.cloudDeleteLog(acc.id, activeDate);
   } else {
     acc.logs[activeDate] = { pnl, trades, notes };
+    if (window.cloudSaveLog) window.cloudSaveLog(acc.id, activeDate, { pnl, trades, notes });
   }
-
-  saveState();
 
   const fb = document.getElementById('saveFeedback');
   fb.classList.add('show');
@@ -1206,7 +1165,7 @@ function clearDay() {
   if (!acc) return;
 
   delete acc.logs[activeDate];
-  saveState();
+  if (window.cloudDeleteLog) window.cloudDeleteLog(acc.id, activeDate);
 
   document.getElementById('pnlInput').value    = '';
   document.getElementById('tradesInput').value = '';
@@ -1286,15 +1245,19 @@ document.getElementById('todayBtn').addEventListener('click', () => {
 });
 
 document.getElementById('themeToggle').addEventListener('click', () => {
-  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-  saveState();
+  const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  applyTheme(newTheme);
+  state.theme = newTheme;
+  if (window.cloudSavePrefs) window.cloudSavePrefs({ theme: newTheme });
 });
 
 document.getElementById('capitalInput').addEventListener('input', e => {
   const acc = getCurrentAccount();
   if (acc) {
     acc.baseline = parseFloat(e.target.value) || 0;
-    saveState();
+    if (window.cloudSaveAccount) {
+      window.cloudSaveAccount(acc.id, { name: acc.name, baseline: acc.baseline, createdAt: acc.createdAt });
+    }
     renderStats();
     renderOverview();
   }
@@ -1312,7 +1275,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   if (logCount === 0) { showToast('No data to reset'); return; }
   if (confirm(`Reset all trading data for "${acc.name}"?\n\n${logCount} day${logCount !== 1 ? 's' : ''} will be cleared. This cannot be undone.`)) {
     acc.logs = {};
-    saveState();
+    if (window.cloudResetLogs) window.cloudResetLogs(acc.id);
     renderCalendar();
     renderStats();
     renderOverview();
@@ -1325,9 +1288,8 @@ document.getElementById('overviewToggle').addEventListener('click', () => {
   const label = document.getElementById('toggleLabel');
   const isCollapsed = panel.classList.toggle('collapsed');
   label.textContent = isCollapsed ? 'Show' : 'Hide';
-  // Save collapsed state
   state.overviewCollapsed = isCollapsed;
-  saveState();
+  if (window.cloudSavePrefs) window.cloudSavePrefs({ overviewCollapsed: isCollapsed });
 });
 document.getElementById('modalOverlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeModal();
@@ -1366,15 +1328,8 @@ document.addEventListener('keydown', e => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────
+// Apply default light theme immediately; actual theme + data come from Firestore after auth.
 (function init() {
-  applyTheme(state.theme || 'light');
-  renderApp();
+  applyTheme('light');
   updateNavState();
-  // Restore overview collapsed state
-  if (state.overviewCollapsed) {
-    const panel = document.getElementById('overviewPanel');
-    const label = document.getElementById('toggleLabel');
-    if (panel) panel.classList.add('collapsed');
-    if (label) label.textContent = 'Show';
-  }
 })();

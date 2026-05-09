@@ -1800,6 +1800,87 @@ body {
   }
 }
 
+/* ================================================================
+   LOGIN MODAL
+   ================================================================ */
+
+.login-overlay {
+  z-index: 1500;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.login-modal {
+  max-width: 400px;
+  width: 100%;
+  padding: 44px 40px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: var(--radius-xl);
+}
+
+.login-logo {
+  margin-bottom: 22px;
+}
+
+.login-logo-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.login-title {
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.login-subtitle {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-fields {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.login-error {
+  width: 100%;
+  min-height: 22px;
+  font-size: 0.78rem;
+  color: var(--red-text);
+  text-align: center;
+  margin: 8px 0 10px;
+  line-height: 1.45;
+}
+
+.login-submit-btn {
+  width: 100%;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .login-modal {
+    padding: 32px 24px 28px;
+  }
+}
+
 /* ── Small Mobile (≤400px): hide week column, true 7-col grid ────── */
 @media (max-width: 400px) {
   .app-wrapper {
