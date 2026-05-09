@@ -1939,3 +1939,404 @@ body {
     font-size: 1.15rem;
   }
 }
+/* ================================================================
+   HIGH PROBABILITY DRAWER
+   ================================================================ */
+
+/* ── Trigger Tab ─────────────────────────────────────────────────── */
+.hp-trigger-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 900;
+
+  width: 26px;
+  height: 68px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  color: var(--text-secondary);
+  box-shadow: -2px 0 10px rgba(0,0,0,0.07), -1px 0 3px rgba(0,0,0,0.04);
+  transition: var(--transition);
+  padding: 0;
+}
+
+.hp-trigger-tab:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  box-shadow: -3px 0 16px rgba(0,0,0,0.11);
+}
+
+.hp-trigger-tab svg {
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hp-trigger-tab.open svg {
+  transform: rotate(180deg);
+}
+
+/* ── Drawer Panel ────────────────────────────────────────────────── */
+.hp-drawer {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: 288px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -6px 0 32px rgba(0,0,0,0.09), -2px 0 8px rgba(0,0,0,0.05);
+  z-index: 890;
+
+  transform: translateX(100%);
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hp-drawer.open {
+  transform: translateX(0);
+}
+
+/* ── Drawer Header ───────────────────────────────────────────────── */
+.hp-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 13px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.hp-drawer-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+.hp-drawer-title svg {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* Reuse existing hp-close-btn as a shared shape */
+.hp-close-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.hp-close-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+/* ── Drawer Body ─────────────────────────────────────────────────── */
+.hp-drawer-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+/* ── Add Button ──────────────────────────────────────────────────── */
+.hp-add-btn {
+  width: 100%;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.hp-add-btn:hover {
+  opacity: 0.86;
+}
+
+/* ── Setup List ──────────────────────────────────────────────────── */
+.hp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1;
+}
+
+.hp-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.79rem;
+  padding: 28px 12px;
+  line-height: 1.6;
+}
+
+.hp-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition: var(--transition);
+  cursor: pointer;
+  position: relative;
+}
+
+.hp-item:hover {
+  background: var(--surface-2);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.hp-item-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.hp-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.hp-item-link-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+
+.hp-item:hover .hp-item-link-icon {
+  color: var(--text-secondary);
+}
+
+.hp-item-delete {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: var(--transition);
+  flex-shrink: 0;
+  padding: 0;
+  font-family: inherit;
+}
+
+.hp-item:hover .hp-item-delete {
+  display: flex;
+}
+
+.hp-item-delete:hover {
+  background: var(--red-bg);
+  color: var(--red-text);
+}
+
+/* ── URL Input Modal ─────────────────────────────────────────────── */
+.hp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.42);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+  padding: 16px;
+}
+
+.hp-modal-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.hp-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 380px;
+  max-width: 100%;
+  transform: scale(0.96) translateY(10px);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hp-modal-overlay.active .hp-modal {
+  transform: scale(1) translateY(0);
+}
+
+.hp-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.hp-modal-header-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+.hp-modal-body {
+  padding: 16px 18px 12px;
+}
+
+.hp-modal-label {
+  font-size: 0.71rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 8px;
+}
+
+.hp-url-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.84rem;
+  outline: none;
+  transition: var(--transition);
+}
+
+.hp-url-input:focus {
+  border-color: var(--border-hover);
+  box-shadow: 0 0 0 3px rgba(26,25,22,0.06);
+}
+
+[data-theme="dark"] .hp-url-input:focus {
+  box-shadow: 0 0 0 3px rgba(240,237,232,0.07);
+}
+
+.hp-url-input::placeholder {
+  color: var(--text-muted);
+}
+
+.hp-modal-error {
+  font-size: 0.76rem;
+  color: var(--red-text);
+  margin-top: 6px;
+  min-height: 18px;
+  line-height: 1.4;
+}
+
+.hp-modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 8px 18px 16px;
+}
+
+.hp-modal-cancel {
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.hp-modal-cancel:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.hp-modal-save {
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.hp-modal-save:hover {
+  opacity: 0.86;
+}
+
+/* ── Mobile adjustments ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .hp-drawer {
+    width: 100vw;
+    max-width: 320px;
+  }
+
+  .hp-trigger-tab {
+    width: 22px;
+    height: 56px;
+  }
+}

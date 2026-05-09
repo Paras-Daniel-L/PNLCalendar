@@ -1363,3 +1363,142 @@ document.addEventListener('keydown', e => {
   applyTheme('light');
   updateNavState();
 })();
+// ── High Probability Setups ───────────────────────────────────────
+let hpSetups = JSON.parse(localStorage.getItem('hp_setups') || '[]');
+
+function hpSave() {
+  localStorage.setItem('hp_setups', JSON.stringify(hpSetups));
+}
+
+function renderHpList() {
+  const list = document.getElementById('hpList');
+  list.innerHTML = '';
+
+  if (hpSetups.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'hp-empty';
+    empty.textContent = 'No setups yet.\nClick "Add Setup" to save your first chart link.';
+    list.appendChild(empty);
+    return;
+  }
+
+  hpSetups.forEach((setup, i) => {
+    const a = document.createElement('a');
+    a.className = 'hp-item';
+    a.href      = setup.url;
+    a.target    = '_blank';
+    a.rel       = 'noopener noreferrer';
+
+    // Icon
+    const icon = document.createElement('div');
+    icon.className = 'hp-item-icon';
+    icon.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+      <polyline points="16 7 22 7 22 13"/>
+    </svg>`;
+
+    // Name
+    const name = document.createElement('span');
+    name.className   = 'hp-item-name';
+    name.textContent = setup.name;
+
+    // External link icon
+    const linkIcon = document.createElement('span');
+    linkIcon.className = 'hp-item-link-icon';
+    linkIcon.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      <polyline points="15 3 21 3 21 9"/>
+      <line x1="10" y1="14" x2="21" y2="3"/>
+    </svg>`;
+
+    // Delete button
+    const del = document.createElement('button');
+    del.className = 'hp-item-delete';
+    del.title     = 'Remove setup';
+    del.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>`;
+    del.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      hpSetups.splice(i, 1);
+      hpSave();
+      renderHpList();
+    });
+
+    a.appendChild(icon);
+    a.appendChild(name);
+    a.appendChild(linkIcon);
+    a.appendChild(del);
+    list.appendChild(a);
+  });
+}
+
+function openHpDrawer() {
+  document.getElementById('hpDrawer').classList.add('open');
+  document.getElementById('hpTriggerTab').classList.add('open');
+  renderHpList();
+}
+
+function closeHpDrawer() {
+  document.getElementById('hpDrawer').classList.remove('open');
+  document.getElementById('hpTriggerTab').classList.remove('open');
+}
+
+function openHpModal() {
+  document.getElementById('hpUrlInput').value    = '';
+  document.getElementById('hpModalError').textContent = '';
+  document.getElementById('hpModalOverlay').classList.add('active');
+  setTimeout(() => document.getElementById('hpUrlInput').focus(), 80);
+}
+
+function closeHpModal() {
+  document.getElementById('hpModalOverlay').classList.remove('active');
+}
+
+function saveHpSetup() {
+  const raw   = document.getElementById('hpUrlInput').value.trim();
+  const errEl = document.getElementById('hpModalError');
+
+  if (!raw) {
+    errEl.textContent = 'Please enter a URL.';
+    return;
+  }
+
+  // Auto-prepend https:// if missing scheme
+  let url = raw;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+  try { new URL(url); } catch {
+    errEl.textContent = 'Please enter a valid URL (e.g. https://tradingview.com/...).';
+    return;
+  }
+
+  const num = hpSetups.length + 1;
+  hpSetups.push({ name: `Setup-${num}`, url });
+  hpSave();
+  renderHpList();
+  closeHpModal();
+  showToast(`Setup-${num} added ✓`);
+}
+
+// ── HP Event Listeners ────────────────────────────────────────────
+document.getElementById('hpTriggerTab').addEventListener('click', () => {
+  const isOpen = document.getElementById('hpDrawer').classList.contains('open');
+  isOpen ? closeHpDrawer() : openHpDrawer();
+});
+
+document.getElementById('hpCloseBtn').addEventListener('click', closeHpDrawer);
+document.getElementById('hpAddBtn').addEventListener('click', openHpModal);
+
+document.getElementById('hpModalOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeHpModal();
+});
+document.getElementById('hpModalClose').addEventListener('click', closeHpModal);
+document.getElementById('hpModalCancel').addEventListener('click', closeHpModal);
+document.getElementById('hpModalSave').addEventListener('click', saveHpSetup);
+
+document.getElementById('hpUrlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter')  saveHpSetup();
+  if (e.key === 'Escape') closeHpModal();
+});
