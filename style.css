@@ -2390,3 +2390,313 @@ body {
   padding: 28px 12px;
   line-height: 1.6;
 }
+
+/* ================================================================
+   PAYOUT TRACKER CARD
+   ================================================================ */
+
+/* ── Card container ─────────────────────────────────────────────── */
+.payout-card {
+  background:    var(--surface);
+  border:        1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow:    var(--shadow-sm);
+  margin-bottom: 20px;
+  overflow:      hidden;
+  transition:    border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.payout-card:hover {
+  border-color: var(--border-hover);
+  box-shadow:   var(--shadow-md);
+}
+
+/* ── Header row ─────────────────────────────────────────────────── */
+.payout-header {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             16px;
+  padding:         16px 20px;
+  border-bottom:   1px solid var(--border);
+  flex-wrap:       wrap;
+}
+
+.payout-title-group {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  flex-shrink: 0;
+  color:       var(--text-muted);
+}
+
+.payout-title {
+  font-size:      0.82rem;
+  font-weight:    600;
+  letter-spacing: 0.01em;
+  color:          var(--text-primary);
+}
+
+.payout-badge {
+  font-size:      0.68rem;
+  font-weight:    600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color:          var(--text-muted);
+  background:     var(--surface-2);
+  border:         1px solid var(--border);
+  padding:        2px 8px;
+  border-radius:  99px;
+}
+
+/* ── Bi-Weekly Target input ─────────────────────────────────────── */
+.payout-target-wrap {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+  flex-shrink: 0;
+}
+
+.payout-target-label {
+  font-size:      0.72rem;
+  font-weight:    500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color:          var(--text-muted);
+  white-space:    nowrap;
+}
+
+.payout-target-input-row {
+  display:     flex;
+  align-items: center;
+  gap:         3px;
+  background:  var(--surface-2);
+  border:      1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding:     5px 10px;
+  transition:  var(--transition);
+}
+.payout-target-input-row:focus-within {
+  border-color: var(--text-primary);
+  background:   var(--surface);
+}
+
+.payout-target-prefix {
+  font-family: 'DM Mono', monospace;
+  font-size:   0.88rem;
+  color:       var(--text-muted);
+}
+
+.payout-target-input {
+  font-family:  'DM Mono', monospace;
+  font-size:    0.95rem;
+  font-weight:  500;
+  color:        var(--text-primary);
+  background:   transparent;
+  border:       none;
+  outline:      none;
+  width:        96px;
+  text-align:   right;
+}
+.payout-target-input::placeholder { color: var(--text-muted); }
+
+/* ── Body ───────────────────────────────────────────────────────── */
+.payout-body {
+  display:   grid;
+  grid-template-columns: 1fr 1fr;
+  gap:       0;
+}
+
+@media (max-width: 680px) {
+  .payout-body { grid-template-columns: 1fr; }
+}
+
+/* ── Split section ──────────────────────────────────────────────── */
+.payout-split-section {
+  padding:       18px 20px;
+  border-right:  1px solid var(--border);
+  display:       flex;
+  flex-direction: column;
+  gap:           12px;
+}
+
+@media (max-width: 680px) {
+  .payout-split-section {
+    border-right:  none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.payout-gross-row {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             8px;
+}
+
+.payout-row-label {
+  font-size:   0.78rem;
+  color:       var(--text-secondary);
+  font-weight: 500;
+}
+
+.payout-row-value {
+  font-family: 'DM Mono', monospace;
+  font-size:   0.95rem;
+  font-weight: 500;
+  color:       var(--text-primary);
+}
+.payout-row-value.pnl-pos { color: var(--green-text); }
+.payout-row-value.pnl-neg { color: var(--red-text); }
+
+.payout-divider-line {
+  height:     1px;
+  background: var(--border);
+}
+
+.payout-split-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0;
+}
+
+.payout-split-item {
+  display:        flex;
+  flex-direction: column;
+  gap:            4px;
+}
+.payout-split-item.user { align-items: flex-end; }
+
+.payout-split-label {
+  font-size:   0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color:       var(--text-muted);
+}
+
+.payout-split-amount {
+  font-family: 'DM Mono', monospace;
+  font-size:   1.05rem;
+  font-weight: 500;
+  color:       var(--text-muted);
+  transition:  color 0.2s ease;
+}
+.payout-split-amount.firm-amount {
+  color: var(--red-text);
+  font-size: 0.92rem;
+}
+.payout-split-amount.user-amount {
+  color: var(--green-text);
+  font-size: 1.12rem;
+  font-weight: 600;
+}
+
+.payout-split-divider {
+  width:      1px;
+  height:     36px;
+  background: var(--border);
+  margin:     0 14px;
+}
+
+/* ── Progress section ───────────────────────────────────────────── */
+.payout-progress-section {
+  padding:        18px 20px;
+  display:        flex;
+  flex-direction: column;
+  justify-content: center;
+  gap:            10px;
+}
+
+.payout-remaining-row {
+  display:         flex;
+  align-items:     baseline;
+  justify-content: space-between;
+  gap:             8px;
+}
+
+.payout-remaining-label {
+  font-size:      0.72rem;
+  font-weight:    600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color:          var(--text-muted);
+  white-space:    nowrap;
+}
+
+.payout-remaining-value {
+  font-family:    'DM Mono', monospace;
+  font-size:      1.55rem;
+  font-weight:    500;
+  letter-spacing: -0.03em;
+  color:          var(--text-primary);
+  line-height:    1;
+  transition:     color 0.2s ease, transform 0.2s ease;
+}
+.payout-remaining-value.target-hit {
+  color:     var(--green-text);
+  font-size: 1.25rem;
+}
+
+/* Progress bar */
+.payout-progress-bar-wrap {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+}
+
+.payout-progress-bar {
+  flex:          1;
+  height:        8px;
+  background:    var(--border);
+  border-radius: 99px;
+  overflow:      hidden;
+}
+
+.payout-progress-fill {
+  height:        100%;
+  border-radius: 99px;
+  background:    linear-gradient(90deg, var(--green-text) 0%, #34C96B 100%);
+  transition:    width 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+                 background 0.3s ease;
+}
+.payout-progress-fill.target-hit {
+  background: linear-gradient(90deg, #27AE60 0%, #2ECC71 100%);
+}
+
+.payout-progress-pct {
+  font-family:  'DM Mono', monospace;
+  font-size:    0.75rem;
+  font-weight:  500;
+  color:        var(--text-muted);
+  min-width:    32px;
+  text-align:   right;
+}
+
+/* Target-hit celebration message */
+.payout-target-hit-msg {
+  font-size:   0.78rem;
+  font-weight: 500;
+  color:       var(--green-text);
+  background:  var(--green-bg);
+  border:      1px solid var(--green-border);
+  border-radius: var(--radius-sm);
+  padding:     6px 10px;
+  opacity:     0;
+  transform:   translateY(4px);
+  transition:  opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+.payout-target-hit-msg.visible {
+  opacity:   1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Dark mode tweaks */
+[data-theme="dark"] .payout-progress-fill {
+  background: linear-gradient(90deg, #2EBD63 0%, #4DC87A 100%);
+}
+[data-theme="dark"] .payout-progress-fill.target-hit {
+  background: linear-gradient(90deg, #27AE60 0%, #4DC87A 100%);
+}

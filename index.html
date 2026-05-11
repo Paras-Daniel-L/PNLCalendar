@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PNL Journal — Trading Calendar</title>
 
-  <!-- Favicon -->
+    <!-- Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>" />
-  
+
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
@@ -136,6 +136,78 @@
         <div class="stat-meta" id="allTimeMeta">Across all months</div>
       </div>
     </div>
+
+    <!-- ── Payout Tracker Card ───────────────────────────────────── -->
+    <div class="payout-card" id="payoutCard">
+
+      <!-- Header row -->
+      <div class="payout-header">
+        <div class="payout-title-group">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          <span class="payout-title">Payout Tracker</span>
+          <span class="payout-badge">Prop Firm · 80/20 Split</span>
+        </div>
+        <!-- Bi-Weekly Target input -->
+        <div class="payout-target-wrap">
+          <span class="payout-target-label">Bi-Weekly Target</span>
+          <div class="payout-target-input-row">
+            <span class="payout-target-prefix">$</span>
+            <input
+              type="number"
+              class="payout-target-input"
+              id="payoutTargetInput"
+              placeholder="0"
+              min="0"
+              step="100"
+              title="Click to set your bi-weekly profit target"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Body: split breakdown + remaining -->
+      <div class="payout-body" id="payoutBody">
+
+        <!-- Split rows -->
+        <div class="payout-split-section">
+          <div class="payout-gross-row">
+            <span class="payout-row-label">Gross PNL (Month)</span>
+            <span class="payout-row-value mono" id="payoutGrossVal">$0.00</span>
+          </div>
+          <div class="payout-divider-line"></div>
+          <div class="payout-split-row">
+            <div class="payout-split-item firm">
+              <span class="payout-split-label">Prop Firm (20%)</span>
+              <span class="payout-split-amount" id="payoutFirmVal">—</span>
+            </div>
+            <div class="payout-split-divider"></div>
+            <div class="payout-split-item user">
+              <span class="payout-split-label">Your Split (80%)</span>
+              <span class="payout-split-amount" id="payoutUserVal">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress section -->
+        <div class="payout-progress-section">
+          <div class="payout-remaining-row">
+            <span class="payout-remaining-label">Remaining to Target</span>
+            <span class="payout-remaining-value" id="payoutRemainingVal">—</span>
+          </div>
+          <div class="payout-progress-bar-wrap">
+            <div class="payout-progress-bar">
+              <div class="payout-progress-fill" id="payoutProgressFill" style="width:0%"></div>
+            </div>
+            <span class="payout-progress-pct" id="payoutProgressPct">0%</span>
+          </div>
+          <div class="payout-target-hit-msg" id="payoutTargetHitMsg"></div>
+        </div>
+
+      </div><!-- /payoutBody -->
+    </div><!-- /payoutCard -->
 
     <!-- ── Account Overview Panel ───────────────────────────────── -->
     <div class="overview-panel" id="overviewPanel">

@@ -214,6 +214,9 @@ function renderApp() {
 function syncCapitalInput() {
   const acc = getCurrentAccount();
   if (acc) document.getElementById('capitalInput').value = acc.baseline ?? 10000;
+  syncPayoutTarget();
+  // Re-bind payout input each time it comes into view (after renderApp rebuilds the DOM)
+  setTimeout(_bindPayoutTargetInput, 0);
 }
 
 // ── Account Switcher Render ───────────────────────────────────────
@@ -640,6 +643,135 @@ function renderStats() {
     .join('');
 
   renderChart(capital);
+  renderPayoutTracker(monthly.total);
+}
+
+// ── Payout Tracker ────────────────────────────────────────────────
+
+/**
+ * Sync the bi-weekly target input from the current account's stored value.
+ * Called whenever the active account changes (via syncCapitalInput path).
+ */
+function syncPayoutTarget() {
+  const acc = getCurrentAccount();
+  const target = acc ? (parseFloat(acc.biWeeklyTarget) || 0) : 0;
+  const input  = document.getElementById('payoutTargetInput');
+  if (input) input.value = target > 0 ? target : '';
+}
+
+/**
+ * Render the Payout Tracker card from the month's gross PNL.
+ * Runs only when Gross PNL > 0; otherwise shows a zero/idle state.
+ * @param {number} grossPnl  - current month's total PNL
+ */
+function renderPayoutTracker(grossPnl) {
+  const acc    = getCurrentAccount();
+  const target = acc ? (parseFloat(acc.biWeeklyTarget) || 0) : 0;
+
+  const grossEl     = document.getElementById('payoutGrossVal');
+  const firmEl      = document.getElementById('payoutFirmVal');
+  const userEl      = document.getElementById('payoutUserVal');
+  const remainEl    = document.getElementById('payoutRemainingVal');
+  const fillEl      = document.getElementById('payoutProgressFill');
+  const pctEl       = document.getElementById('payoutProgressPct');
+  const hitMsgEl    = document.getElementById('payoutTargetHitMsg');
+
+  if (!grossEl) return; // guard: card not yet in DOM
+
+  // ── Format helpers ──
+  const $ = v => '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // ── Gross PNL display (always) ──
+  grossEl.textContent = $(grossPnl);
+  grossEl.className   = 'payout-row-value mono' + (grossPnl > 0 ? ' pnl-pos' : grossPnl < 0 ? ' pnl-neg' : '');
+
+  // ── Split & progress: only meaningful when Gross PNL > 0 ──
+  if (grossPnl > 0) {
+    const firmCut  = grossPnl * 0.20;
+    const userNet  = grossPnl * 0.80;
+    const remaining = target > 0 ? Math.max(0, target - grossPnl) : null;
+    const progress  = target > 0 ? Math.min(100, (grossPnl / target) * 100) : 0;
+    const targetHit = target > 0 && grossPnl >= target;
+
+    firmEl.textContent = '-' + $(firmCut);
+    firmEl.className   = 'payout-split-amount firm-amount';
+
+    userEl.textContent = '+' + $(userNet);
+    userEl.className   = 'payout-split-amount user-amount';
+
+    if (remaining !== null) {
+      remainEl.textContent = targetHit ? 'Target Hit!' : $(remaining);
+      remainEl.className   = 'payout-remaining-value' + (targetHit ? ' target-hit' : '');
+    } else {
+      remainEl.textContent = '—';
+      remainEl.className   = 'payout-remaining-value';
+    }
+
+    fillEl.style.width  = progress.toFixed(1) + '%';
+    fillEl.className    = 'payout-progress-fill' + (targetHit ? ' target-hit' : '');
+    pctEl.textContent   = progress.toFixed(0) + '%';
+
+    if (targetHit) {
+      hitMsgEl.textContent = '🎉 Bi-weekly target reached — you can request a payout!';
+      hitMsgEl.className   = 'payout-target-hit-msg visible';
+    } else {
+      hitMsgEl.textContent = '';
+      hitMsgEl.className   = 'payout-target-hit-msg';
+    }
+
+  } else {
+    // Zero / loss state — show dashes, keep bar empty
+    firmEl.textContent  = '—';
+    firmEl.className    = 'payout-split-amount';
+    userEl.textContent  = '—';
+    userEl.className    = 'payout-split-amount';
+    remainEl.textContent = target > 0 ? $(target) : '—';
+    remainEl.className  = 'payout-remaining-value';
+    fillEl.style.width  = '0%';
+    fillEl.className    = 'payout-progress-fill';
+    pctEl.textContent   = '0%';
+    hitMsgEl.textContent = '';
+    hitMsgEl.className   = 'payout-target-hit-msg';
+  }
+}
+
+// ── Payout Target Input: save to Firestore on change ──────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Input is created at runtime via renderApp, so we use event delegation on the wrapper
+});
+
+// Event wired after DOM ready — delegate from document since the card is always present
+document.getElementById('payoutTargetInput') && (() => {
+  // Direct bind if element already exists (non-deferred scripts)
+  _bindPayoutTargetInput();
+})();
+
+function _bindPayoutTargetInput() {
+  const input = document.getElementById('payoutTargetInput');
+  if (!input || input.dataset.bound) return;
+  input.dataset.bound = '1';
+
+  const save = () => {
+    const acc   = getCurrentAccount();
+    if (!acc) return;
+    const val   = parseFloat(input.value) || 0;
+    acc.biWeeklyTarget = val;
+    // Persist to Firestore account document
+    if (window.cloudSaveAccount) {
+      window.cloudSaveAccount(acc.id, {
+        name:          acc.name,
+        baseline:      acc.baseline,
+        createdAt:     acc.createdAt,
+        biWeeklyTarget: val,
+      });
+    }
+    // Re-render with updated target
+    const monthly = getMonthStats(viewYear, viewMonth);
+    renderPayoutTracker(monthly.total);
+  };
+
+  input.addEventListener('change', save);
+  input.addEventListener('blur',   save);
 }
 
 // ── Chart ─────────────────────────────────────────────────────────
