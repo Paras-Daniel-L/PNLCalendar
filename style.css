@@ -927,6 +927,30 @@ textarea.field-input {
   border-color: var(--red-border);
 }
 
+/* ── View Chart Button ──────────────────────────────────────────── */
+.btn-view-chart {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition);
+  align-self: flex-start;
+}
+.btn-view-chart:hover {
+  background: var(--border);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
 /* ── Toast ──────────────────────────────────────────────────────── */
 .toast {
   position: fixed;

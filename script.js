@@ -1425,6 +1425,25 @@ function openModal(key, day) {
   document.getElementById('tradesInput').value  = data?.numTrades ?? data?.trades ?? '';
   document.getElementById('notesInput').value   = data?.notes  ?? '';
 
+  // Chart URL field + View Chart button
+  const chartUrl  = data?.chartUrl ?? '';
+  const urlInput  = document.getElementById('chartUrlInput');
+  const viewBtn   = document.getElementById('viewChartBtn');
+  urlInput.value  = chartUrl;
+  if (chartUrl) {
+    viewBtn.href         = chartUrl;
+    viewBtn.style.display = '';
+  } else {
+    viewBtn.style.display = 'none';
+  }
+
+  // Live-update the button as the user types a URL
+  urlInput.oninput = () => {
+    const v = urlInput.value.trim();
+    if (v) { viewBtn.href = v; viewBtn.style.display = ''; }
+    else   { viewBtn.style.display = 'none'; }
+  };
+
   updateModalBadge(data?.pnl);
   document.getElementById('saveFeedback').classList.remove('show');
   document.getElementById('saveValidationMsg').classList.remove('show');
@@ -1458,6 +1477,7 @@ function saveDay() {
   const pnlRaw    = document.getElementById('pnlInput').value;
   const tradesRaw = document.getElementById('tradesInput').value;
   const notes     = document.getElementById('notesInput').value;
+  const chartUrl  = document.getElementById('chartUrlInput').value.trim();
   const msgEl     = document.getElementById('saveValidationMsg');
 
   const pnlFilled   = pnlRaw.trim() !== '';
@@ -1479,11 +1499,11 @@ function saveDay() {
 
   const numTrades = tradesValid ? parseInt(tradesRaw) : 0;
 
-  if (!pnlFilled && !tradesFilled && !notes.trim()) {
+  if (!pnlFilled && !tradesFilled && !notes.trim() && !chartUrl) {
     delete acc.logs[activeDate];
     if (window.cloudDeleteLog) window.cloudDeleteLog(acc.id, activeDate);
   } else {
-    const payload = { pnl: pnlRaw, numTrades, notes };
+    const payload = { pnl: pnlRaw, numTrades, notes, ...(chartUrl && { chartUrl }) };
     acc.logs[activeDate] = payload;
     if (window.cloudSaveLog) window.cloudSaveLog(acc.id, activeDate, payload);
   }
@@ -1510,6 +1530,9 @@ function clearDay() {
   document.getElementById('pnlInput').value    = '';
   document.getElementById('tradesInput').value = '';
   document.getElementById('notesInput').value  = '';
+  document.getElementById('chartUrlInput').value = '';
+  const viewBtn = document.getElementById('viewChartBtn');
+  if (viewBtn) { viewBtn.href = '#'; viewBtn.style.display = 'none'; }
   document.getElementById('saveValidationMsg').classList.remove('show');
   updateModalBadge(undefined);
 
