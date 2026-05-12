@@ -204,9 +204,59 @@
             <span class="payout-progress-pct" id="payoutProgressPct">0%</span>
           </div>
           <div class="payout-target-hit-msg" id="payoutTargetHitMsg"></div>
+
+          <!-- Surplus row: visible only when profit exceeds target -->
+          <div class="payout-surplus-row" id="payoutSurplusRow" style="display:none">
+            <span class="payout-surplus-label">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+              Surplus above target
+            </span>
+            <span class="payout-surplus-val" id="payoutSurplusVal">—</span>
+          </div>
+        </div><!-- /payout-progress-section -->
+
+        <!-- Bi-Monthly Payout Dates -->
+        <div class="payout-dates-section">
+          <div class="payout-dates-heading">Bi-Monthly Payout Windows</div>
+          <div class="payout-dates-row">
+            <div class="payout-date-item" id="payoutDate15">
+              <div class="payout-date-period">Mid-Month · 15th</div>
+              <div class="payout-date-label" id="payoutDate15Val">—</div>
+              <div class="payout-date-pnl" id="payoutDate15Pnl">—</div>
+              <div class="payout-date-status" id="payoutDate15Status"></div>
+            </div>
+            <div class="payout-date-sep"></div>
+            <div class="payout-date-item" id="payoutDateEnd">
+              <div class="payout-date-period">Month-End</div>
+              <div class="payout-date-label" id="payoutDateEndVal">—</div>
+              <div class="payout-date-pnl" id="payoutDateEndPnl">—</div>
+              <div class="payout-date-status" id="payoutDateEndStatus"></div>
+            </div>
+          </div>
         </div>
 
       </div><!-- /payoutBody -->
+
+      <!-- Monthly History (collapsible) -->
+      <div class="payout-history-section">
+        <div class="payout-history-header" id="payoutHistoryToggle">
+          <span class="payout-history-title">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Monthly History
+          </span>
+          <span class="payout-history-chevron" id="payoutHistoryChevron">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            Show
+          </span>
+        </div>
+        <div class="payout-history-body" id="payoutHistoryBody" style="display:none">
+          <div class="payout-history-cols">
+            <span>Month</span><span>Target</span><span>Actual</span><span>Vs Target</span>
+          </div>
+          <div class="payout-history-list" id="payoutHistoryList"></div>
+        </div>
+      </div>
+
     </div><!-- /payoutCard -->
 
     <!-- ── Account Overview Panel ───────────────────────────────── -->
@@ -289,6 +339,8 @@
           <div class="legend-item"><div class="legend-dot green"></div> Profitable day</div>
           <div class="legend-item"><div class="legend-dot red"></div> Loss day</div>
           <div class="legend-item"><div class="legend-dot neutral"></div> No entry</div>
+          <div class="legend-item"><div class="legend-dot payday"></div> Payday</div>
+          <div class="legend-payday-countdown" id="calPaydayCountdown"></div>
         </div>
       </div>
 

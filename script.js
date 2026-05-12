@@ -119,7 +119,41 @@ function getStreak() {
   return { streak, type };
 }
 
-// ── All-Time Stats (comprehensive) ───────────────────────────────
+// ── Next Payday Countdown ──────────────────────────────────────────
+/**
+ * Returns info about the next upcoming bi-monthly payday (15th or last day).
+ * Always calculated relative to today (not the viewed month).
+ */
+function getNextPaydayInfo() {
+  const now   = new Date();
+  const y     = now.getFullYear();
+  const m     = now.getMonth();
+  const today = new Date(y, m, now.getDate());
+
+  // Build candidates: 15th and last-of-month for this and next two months
+  const candidates = [];
+  for (let offset = 0; offset <= 2; offset++) {
+    const cy   = new Date(y, m + offset, 1).getFullYear();
+    const cm   = new Date(y, m + offset, 1).getMonth();
+    const last = new Date(cy, cm + 1, 0).getDate();
+    candidates.push({ date: new Date(cy, cm, 15),   type: 'mid', day: 15   });
+    candidates.push({ date: new Date(cy, cm, last),  type: 'end', day: last });
+  }
+
+  // First candidate that is >= today
+  const next = candidates.find(c => c.date >= today);
+  if (!next) return null;
+
+  const daysAway = Math.round((next.date - today) / 86400000);
+  return {
+    daysAway,
+    type: next.type,   // 'mid' | 'end'
+    date: next.date,
+    isToday: daysAway === 0,
+  };
+}
+
+
 function calculateAllTimeStats() {
   const acc = getCurrentAccount();
   if (!acc) return null;
@@ -499,6 +533,14 @@ function renderCalendar() {
       if (cell.isToday)  el.classList.add('today');
       if (cell.isFuture) el.classList.add('future');
 
+      // ── Payday detection (15th = mid-month, last day = end-of-month) ──
+      const isPaydayMid = cell.d === 15;
+      const isPaydayEnd = cell.d === daysInMonth;
+      if (isPaydayMid || isPaydayEnd) {
+        el.classList.add('payday');
+        el.classList.add(isPaydayMid ? 'payday-mid' : 'payday-end');
+      }
+
       if (cell.data && cell.data.pnl !== undefined && cell.data.pnl !== '' && cell.data.pnl !== null) {
         const p = parseFloat(cell.data.pnl) || 0;
         if (p > 0) el.classList.add('positive');
@@ -511,6 +553,14 @@ function renderCalendar() {
       numEl.className   = 'day-num';
       numEl.textContent = cell.d;
       el.appendChild(numEl);
+
+      // ── Payday badge ──
+      if (isPaydayMid || isPaydayEnd) {
+        const badge = document.createElement('div');
+        badge.className   = 'payday-badge';
+        badge.textContent = isPaydayMid ? '💰 Mid-month' : '💰 Month-end';
+        el.appendChild(badge);
+      }
 
       if (cell.data && cell.data.notes && cell.data.notes.trim()) {
         const dot = document.createElement('div');
@@ -553,9 +603,25 @@ function renderCalendar() {
     wtEl.appendChild(wtVal);
     grid.appendChild(wtEl);
   });
-}
 
-// ── Stats Render ─────────────────────────────────────────────────
+  // ── Payday countdown pill (legend bar) ───────────────────────────
+  const countdownEl = document.getElementById('calPaydayCountdown');
+  if (countdownEl) {
+    const info = getNextPaydayInfo();
+    if (info) {
+      const label = info.type === 'mid' ? 'Mid-month payout' : 'Month-end payout';
+      if (info.isToday) {
+        countdownEl.innerHTML =
+          `<span class="payday-countdown today-pill">💰 ${label} is <strong>Today!</strong></span>`;
+      } else {
+        countdownEl.innerHTML =
+          `<span class="payday-countdown">💰 ${label} in <strong>${info.daysAway} day${info.daysAway !== 1 ? 's' : ''}</strong></span>`;
+      }
+    } else {
+      countdownEl.innerHTML = '';
+    }
+  }
+}
 function renderStats() {
   const MONTH_NAMES = [
     'January','February','March','April','May','June',
@@ -675,6 +741,8 @@ function renderPayoutTracker(grossPnl) {
   const fillEl      = document.getElementById('payoutProgressFill');
   const pctEl       = document.getElementById('payoutProgressPct');
   const hitMsgEl    = document.getElementById('payoutTargetHitMsg');
+  const surplusRow  = document.getElementById('payoutSurplusRow');
+  const surplusVal  = document.getElementById('payoutSurplusVal');
 
   if (!grossEl) return; // guard: card not yet in DOM
 
@@ -719,6 +787,17 @@ function renderPayoutTracker(grossPnl) {
       hitMsgEl.className   = 'payout-target-hit-msg';
     }
 
+    // ── Surplus ──
+    if (surplusRow && surplusVal) {
+      if (targetHit) {
+        const surplus = grossPnl - target;
+        surplusVal.textContent = '+' + $(surplus);
+        surplusRow.style.display = '';
+      } else {
+        surplusRow.style.display = 'none';
+      }
+    }
+
   } else {
     // Zero / loss state — show dashes, keep bar empty
     firmEl.textContent  = '—';
@@ -732,7 +811,107 @@ function renderPayoutTracker(grossPnl) {
     pctEl.textContent   = '0%';
     hitMsgEl.textContent = '';
     hitMsgEl.className   = 'payout-target-hit-msg';
+    if (surplusRow) surplusRow.style.display = 'none';
   }
+
+  // ── Payout Dates ──
+  renderPayoutDates();
+
+  // ── History ──
+  renderPayoutHistory();
+}
+
+// ── Payout Dates: highlight 15th & last day of viewed month ──────
+function renderPayoutDates() {
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const now = new Date();
+
+  // Accumulate PNL for 1st-15th and 16th-end
+  let pnl1to15 = 0, pnl16toEnd = 0, has1to15 = false, has16toEnd = false;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key  = dateKey(viewYear, viewMonth, d);
+    const data = getDayData(key);
+    if (data && data.pnl !== undefined && data.pnl !== '' && data.pnl !== null) {
+      const p = parseFloat(data.pnl) || 0;
+      if (d <= 15) { pnl1to15 += p; has1to15 = true; }
+      else         { pnl16toEnd += p; has16toEnd = true; }
+    }
+  }
+
+  const date15  = new Date(viewYear, viewMonth, 15);
+  const dateEnd = new Date(viewYear, viewMonth, daysInMonth);
+
+  function statusLabel(date) {
+    const d = new Date(date); d.setHours(0,0,0,0);
+    const n = new Date(now);  n.setHours(0,0,0,0);
+    if (d < n)  return { text: 'Past',     cls: 'past' };
+    if (d.getTime() === n.getTime()) return { text: 'Today', cls: 'today' };
+    const diff = Math.round((d - n) / 86400000);
+    return { text: `In ${diff} day${diff !== 1 ? 's' : ''}`, cls: 'upcoming' };
+  }
+
+  const s15  = statusLabel(date15);
+  const sEnd = statusLabel(dateEnd);
+
+  const $ = v => '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const item15    = document.getElementById('payoutDate15');
+  const item15Val = document.getElementById('payoutDate15Val');
+  const item15Pnl = document.getElementById('payoutDate15Pnl');
+  const item15St  = document.getElementById('payoutDate15Status');
+  const itemEnd    = document.getElementById('payoutDateEnd');
+  const itemEndVal = document.getElementById('payoutDateEndVal');
+  const itemEndPnl = document.getElementById('payoutDateEndPnl');
+  const itemEndSt  = document.getElementById('payoutDateEndStatus');
+
+  if (!item15 || !itemEnd) return;
+
+  item15Val.textContent = `${MONTHS[viewMonth]} 15`;
+  item15Pnl.textContent = has1to15 ? (pnl1to15 >= 0 ? '+' : '') + $(pnl1to15) : '—';
+  item15Pnl.className   = 'payout-date-pnl' + (has1to15 ? (pnl1to15 >= 0 ? ' pos' : ' neg') : '');
+  item15St.textContent  = s15.text;
+  item15.className      = `payout-date-item ${s15.cls}`;
+
+  itemEndVal.textContent = `${MONTHS[viewMonth]} ${daysInMonth}`;
+  itemEndPnl.textContent = has16toEnd ? (pnl16toEnd >= 0 ? '+' : '') + $(pnl16toEnd) : '—';
+  itemEndPnl.className   = 'payout-date-pnl' + (has16toEnd ? (pnl16toEnd >= 0 ? ' pos' : ' neg') : '');
+  itemEndSt.textContent  = sEnd.text;
+  itemEnd.className      = `payout-date-item ${sEnd.cls}`;
+}
+
+// ── Payout History: monthly target vs actual log ─────────────────
+function renderPayoutHistory() {
+  const acc    = getCurrentAccount();
+  const target = acc ? (parseFloat(acc.biWeeklyTarget) || 0) : 0;
+  const months = aggregateMonthlyPNL(); // reverse-chronological
+  const list   = document.getElementById('payoutHistoryList');
+  if (!list) return;
+
+  if (months.length === 0) {
+    list.innerHTML = '<div class="payout-history-empty">No trading history yet.</div>';
+    return;
+  }
+
+  const $ = v => '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  list.innerHTML = months.map(m => {
+    const pnlCls  = m.pnl >= 0 ? 'pos' : 'neg';
+    let diffEl = '<span class="payout-history-diff neutral">—</span>';
+    if (target > 0) {
+      const diff    = m.pnl - target;
+      const hit     = diff >= 0;
+      const diffStr = (hit ? '+' : '-') + $(diff);
+      diffEl = `<span class="payout-history-diff ${hit ? 'surplus' : 'deficit'}">${diffStr}</span>`;
+    }
+    return `
+      <div class="payout-history-row">
+        <span class="payout-history-month">${m.label}</span>
+        <span class="payout-history-target">${target > 0 ? $(target) : '—'}</span>
+        <span class="payout-history-actual ${pnlCls}">${fmtMoney(m.pnl, true)}</span>
+        ${diffEl}
+      </div>`;
+  }).join('');
 }
 
 // ── Payout Target Input: save to Firestore on change ──────────────
@@ -1485,6 +1664,22 @@ document.addEventListener('keydown', e => {
       viewMonth++;
       if (viewMonth > 11) { viewMonth = 0; viewYear++; }
       updateNavState(); renderCalendar(); renderStats();
+    }
+  }
+});
+
+// ── Payout History Toggle ─────────────────────────────────────────
+document.addEventListener('click', e => {
+  if (e.target.closest('#payoutHistoryToggle')) {
+    const body    = document.getElementById('payoutHistoryBody');
+    const chevron = document.getElementById('payoutHistoryChevron');
+    if (!body) return;
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : '';
+    if (chevron) {
+      chevron.innerHTML = isOpen
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg> Show`
+        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> Hide`;
     }
   }
 });

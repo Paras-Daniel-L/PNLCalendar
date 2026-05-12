@@ -22,6 +22,10 @@
   --red-border:    #F0C4C4;
   --neutral-bg:    #F0EEE9;
   --neutral-text:  #6B6860;
+  --payday-bg:        #FEF8EC;
+  --payday-bg-subtle: #FEFBF3;
+  --payday-text:      #9A6200;
+  --payday-border:    #F2D98A;
   --shadow-sm:     0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   --shadow-md:     0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.05);
   --shadow-lg:     0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08);
@@ -51,6 +55,10 @@
   --red-border:    #401A1A;
   --neutral-bg:    #252320;
   --neutral-text:  #908D87;
+  --payday-bg:        #2A1E00;
+  --payday-bg-subtle: #201800;
+  --payday-text:      #E8A820;
+  --payday-border:    #4A3400;
   --shadow-sm:     0 1px 3px rgba(0,0,0,0.3);
   --shadow-md:     0 4px 16px rgba(0,0,0,0.4);
   --shadow-lg:     0 12px 40px rgba(0,0,0,0.5);
@@ -542,6 +550,64 @@ input, textarea { font-family: inherit; }
 .legend-dot.green   { background: var(--green-bg);  border: 1px solid var(--green-border); }
 .legend-dot.red     { background: var(--red-bg);    border: 1px solid var(--red-border); }
 .legend-dot.neutral { background: var(--surface-2); border: 1px solid var(--border); }
+.legend-dot.payday  { background: var(--payday-bg); border: 1px solid var(--payday-border); }
+
+/* ── Payday Legend Countdown Pill ──────────────────────────────── */
+.legend-payday-countdown {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.payday-countdown {
+  font-size: 0.72rem;
+  color: var(--payday-text);
+  background: var(--payday-bg);
+  border: 1px solid var(--payday-border);
+  border-radius: 99px;
+  padding: 2px 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.payday-countdown strong {
+  font-weight: 700;
+}
+
+.payday-countdown.today-pill {
+  background: var(--payday-text);
+  color: #fff;
+  border-color: var(--payday-text);
+}
+
+[data-theme="dark"] .payday-countdown.today-pill {
+  color: var(--bg);
+}
+
+/* ── Payday Calendar Day ────────────────────────────────────────── */
+.calendar-day.payday {
+  border-top: 2px solid var(--payday-border);
+}
+
+.calendar-day.payday:not(.positive):not(.negative) {
+  background: var(--payday-bg-subtle);
+}
+
+/* ── Payday Badge (inside calendar cell) ───────────────────────── */
+.payday-badge {
+  font-size: 0.60rem;
+  font-weight: 600;
+  color: var(--payday-text);
+  background: var(--payday-bg);
+  border: 1px solid var(--payday-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-top: 3px;
+  align-self: flex-start;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
 
 /* ── Sidebar & Panels ───────────────────────────────────────────── */
 .sidebar {
@@ -2699,4 +2765,204 @@ body {
 }
 [data-theme="dark"] .payout-progress-fill.target-hit {
   background: linear-gradient(90deg, #27AE60 0%, #4DC87A 100%);
+}
+
+/* ── Surplus Row ─────────────────────────────────────────────────── */
+.payout-surplus-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(26,122,68,0.08);
+  border: 1px solid rgba(26,122,68,0.18);
+}
+[data-theme="dark"] .payout-surplus-row {
+  background: rgba(77,200,122,0.09);
+  border-color: rgba(77,200,122,0.2);
+}
+.payout-surplus-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--green-text);
+}
+.payout-surplus-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--green-text);
+}
+
+/* ── Payout Dates Section ────────────────────────────────────────── */
+.payout-dates-section {
+  padding: 14px 18px 12px;
+  border-top: 1px solid var(--border);
+}
+.payout-dates-heading {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.payout-dates-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.payout-date-sep {
+  width: 1px;
+  background: var(--border);
+  margin: 0 14px;
+  flex-shrink: 0;
+}
+.payout-date-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: border-color 0.15s, background 0.15s;
+}
+.payout-date-item.upcoming {
+  border-color: rgba(26,122,68,0.3);
+  background: rgba(26,122,68,0.04);
+}
+.payout-date-item.today {
+  border-color: var(--green-text);
+  background: rgba(26,122,68,0.07);
+}
+.payout-date-item.past {
+  opacity: 0.65;
+}
+[data-theme="dark"] .payout-date-item.upcoming {
+  border-color: rgba(77,200,122,0.25);
+  background: rgba(77,200,122,0.05);
+}
+[data-theme="dark"] .payout-date-item.today {
+  border-color: var(--green-text);
+  background: rgba(77,200,122,0.08);
+}
+.payout-date-period {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.payout-date-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.payout-date-pnl {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.payout-date-pnl.pos { color: var(--green-text); }
+.payout-date-pnl.neg { color: var(--red-text); }
+.payout-date-status {
+  font-size: 0.7rem;
+  font-weight: 500;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+.payout-date-item.upcoming .payout-date-status { color: var(--green-text); }
+.payout-date-item.today    .payout-date-status { color: var(--green-text); font-weight: 700; }
+
+/* ── Payout History Section ──────────────────────────────────────── */
+.payout-history-section {
+  border-top: 1px solid var(--border);
+}
+.payout-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 18px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s;
+}
+.payout-history-header:hover { background: var(--surface-2); }
+.payout-history-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.payout-history-chevron {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.payout-history-body {
+  padding: 0 18px 14px;
+}
+.payout-history-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 5px 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.payout-history-list { display: flex; flex-direction: column; gap: 2px; }
+.payout-history-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  align-items: center;
+  padding: 7px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  transition: background 0.1s;
+}
+.payout-history-row:hover { background: var(--surface-2); }
+.payout-history-month  { color: var(--text-primary); font-weight: 500; }
+.payout-history-target { font-family: 'DM Mono', monospace; color: var(--text-muted); font-size: 0.75rem; }
+.payout-history-actual { font-family: 'DM Mono', monospace; font-size: 0.75rem; }
+.payout-history-actual.pos { color: var(--green-text); }
+.payout-history-actual.neg { color: var(--red-text); }
+.payout-history-diff {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.payout-history-diff.surplus {
+  color: var(--green-text);
+  background: rgba(26,122,68,0.08);
+}
+.payout-history-diff.deficit {
+  color: var(--red-text);
+  background: rgba(184,50,50,0.07);
+}
+.payout-history-diff.neutral { color: var(--text-muted); }
+[data-theme="dark"] .payout-history-diff.surplus { background: rgba(77,200,122,0.1); }
+[data-theme="dark"] .payout-history-diff.deficit { background: rgba(224,96,96,0.1); }
+.payout-history-empty {
+  padding: 14px 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
 }
