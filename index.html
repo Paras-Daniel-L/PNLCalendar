@@ -334,6 +334,19 @@
           <button class="btn btn-ghost nav-today-btn" id="todayBtn">Today</button>
 
         </div>
+        <!-- ── Monthly Target ─────────────────────────────────── -->
+        <div class="monthly-target-bar" id="monthlyTargetBar">
+          <label class="monthly-target-label" for="monthlyTargetInput">Monthly Target</label>
+          <div class="input-icon-wrapper">
+            <svg class="input-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            <input type="number" class="field-input mono" id="monthlyTargetInput" placeholder="0.00" step="0.01" min="0" title="Set monthly profit target for this month"/>
+          </div>
+          <button class="btn btn-ghost monthly-target-save-btn" id="saveMonthlyTargetBtn">Save Target</button>
+        </div>
+
         <div class="calendar-grid" id="calendarGrid"></div>
         <div class="legend">
           <div class="legend-item"><div class="legend-dot green"></div> Profitable day</div>
@@ -387,6 +400,12 @@
         <div class="panel">
           <div class="panel-title">Month Summary</div>
           <div class="month-summary-list" id="monthSummaryList"></div>
+        </div>
+
+        <!-- Pair Analysis -->
+        <div class="panel" id="pairAnalysisPanel" style="display:none;">
+          <div class="panel-title">Pair Analysis</div>
+          <div class="pair-analysis-list" id="pairAnalysisList"></div>
         </div>
 
       </div><!-- /sidebar -->
@@ -452,18 +471,6 @@
       <div class="field-group">
         <label class="field-label" for="notesInput">Notes</label>
         <textarea class="field-input" id="notesInput" placeholder="Market analysis, trade rationale, emotions, lessons learned..."></textarea>
-      </div>
-      <div class="field-group">
-        <label class="field-label" for="chartUrlInput">Chart Link (Google Drive URL)</label>
-        <input type="url" class="field-input" id="chartUrlInput" placeholder="https://drive.google.com/file/d/..."/>
-        <a class="btn-view-chart" id="viewChartBtn" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-            <polyline points="15 3 21 3 21 9"/>
-            <line x1="10" y1="14" x2="21" y2="3"/>
-          </svg>
-          View Chart
-        </a>
       </div>
       <div class="save-validation-msg" id="saveValidationMsg"></div>
     </div>
@@ -556,6 +563,33 @@
   </div>
 </div>
 
+<!-- ── Manage Pairs Micro-Modal ─────────────────────────────────── -->
+<div class="modal-overlay" id="managePairsOverlay">
+  <div class="modal manage-pairs-modal" id="managePairsModal">
+    <div class="modal-header">
+      <div style="display:flex; flex-direction:column; gap:3px;">
+        <div class="modal-date">Trading Pairs</div>
+        <div class="modal-day-badge">Add or remove pairs for this account</div>
+      </div>
+      <button class="modal-close" id="managePairsClose">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="pair-add-row">
+        <input type="text" class="field-input" id="newPairInput" placeholder="e.g. EUR/USD, BTC/USDT…" maxlength="20"/>
+        <button class="btn-save pair-add-btn" id="addPairBtn">Add</button>
+      </div>
+      <div class="pair-manage-list" id="pairManageList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" id="managePairsDoneBtn">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Toast ───────────────────────────────────────────────────── -->
 <div class="toast" id="toast"></div>
 
@@ -621,7 +655,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
     from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, collection, doc, setDoc, deleteDoc, getDocs, getDoc, onSnapshot, writeBatch }
+  import { getFirestore, collection, doc, setDoc, deleteDoc, getDocs, getDoc, onSnapshot, writeBatch, updateDoc }
     from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   // PASTE YOUR FIREBASE CONFIG OBJECT HERE
@@ -665,6 +699,11 @@
 
   window.cloudSavePrefs = (prefs) =>
     setDoc(doc(db, 'users', currentUid), prefs, { merge: true });
+
+  window.cloudSaveMonthlyTarget = (accountId, monthKey, value) =>
+    updateDoc(doc(db, 'users', currentUid, 'accounts', accountId), {
+      [`monthlyTargets.${monthKey}`]: value
+    });
 
   window.cloudResetLogs = async (accountId) => {
     const logsRef  = collection(db, 'users', currentUid, 'accounts', accountId, 'logs');

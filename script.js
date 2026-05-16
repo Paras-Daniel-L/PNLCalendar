@@ -249,6 +249,7 @@ function syncCapitalInput() {
   const acc = getCurrentAccount();
   if (acc) document.getElementById('capitalInput').value = acc.baseline ?? 10000;
   syncPayoutTarget();
+  loadMonthlyTarget();
   // Re-bind payout input each time it comes into view (after renderApp rebuilds the DOM)
   setTimeout(_bindPayoutTargetInput, 0);
 }
@@ -709,6 +710,7 @@ function renderStats() {
     .join('');
 
   renderChart(capital);
+  renderPairAnalysis();
   renderPayoutTracker(monthly.total);
 }
 
@@ -1285,6 +1287,78 @@ function renderAllTimeChart(series, capital) {
   });
 }
 
+// ── Pair Analysis ─────────────────────────────────────────────────
+function getPairAnalysis() {
+  const acc = getCurrentAccount();
+  if (!acc) return null;
+
+  const map = {};
+  for (const [, d] of Object.entries(acc.logs)) {
+    if (!d || !d.pair || d.pair === '') continue;
+    const p = parseFloat(d.pnl) || 0;
+    if (!map[d.pair]) map[d.pair] = { count: 0, pnl: 0 };
+    map[d.pair].count++;
+    map[d.pair].pnl += p;
+  }
+
+  const entries = Object.entries(map);
+  if (entries.length === 0) return null;
+
+  let mostTraded = null, leastTraded = null, mostProfitable = null;
+  let maxCount = -Infinity, minCount = Infinity, maxPnl = -Infinity;
+
+  for (const [pair, stats] of entries) {
+    if (stats.count > maxCount) { maxCount = stats.count; mostTraded     = { pair, ...stats }; }
+    if (stats.count < minCount) { minCount = stats.count; leastTraded    = { pair, ...stats }; }
+    if (stats.pnl   > maxPnl)  { maxPnl   = stats.pnl;   mostProfitable = { pair, ...stats }; }
+  }
+
+  return { mostTraded, leastTraded, mostProfitable };
+}
+
+function renderPairAnalysis() {
+  const panel  = document.getElementById('pairAnalysisPanel');
+  const listEl = document.getElementById('pairAnalysisList');
+  if (!panel || !listEl) return;
+
+  const data = getPairAnalysis();
+  if (!data) { panel.style.display = 'none'; return; }
+
+  panel.style.display = '';
+
+  const rows = [
+    {
+      label: 'Most Traded',
+      pair:  data.mostTraded?.pair  || '—',
+      sub:   data.mostTraded  ? `${data.mostTraded.count} day${data.mostTraded.count !== 1 ? 's' : ''}` : '',
+      cls:   '',
+    },
+    {
+      label: 'Least Traded',
+      pair:  data.leastTraded?.pair || '—',
+      sub:   data.leastTraded ? `${data.leastTraded.count} day${data.leastTraded.count !== 1 ? 's' : ''}` : '',
+      cls:   '',
+    },
+    {
+      label: 'Most Profitable',
+      pair:  data.mostProfitable?.pair || '—',
+      sub:   data.mostProfitable
+               ? fmtMoney(data.mostProfitable.pnl, true) + ' gross'
+               : '',
+      cls:   data.mostProfitable && data.mostProfitable.pnl >= 0 ? 'pos' : 'neg',
+    },
+  ];
+
+  listEl.innerHTML = rows.map(r => `
+    <div class="summary-row">
+      <span class="summary-key">${r.label}</span>
+      <span class="summary-val pair-val">
+        <span class="pair-chip">${r.pair}</span>
+        ${r.sub ? `<span class="pair-sub ${r.cls}">${r.sub}</span>` : ''}
+      </span>
+    </div>`).join('');
+}
+
 // ── Monthly PNL Breakdown ─────────────────────────────────────────
 function aggregateMonthlyPNL() {
   const acc = getCurrentAccount();
@@ -1425,25 +1499,6 @@ function openModal(key, day) {
   document.getElementById('tradesInput').value  = data?.numTrades ?? data?.trades ?? '';
   document.getElementById('notesInput').value   = data?.notes  ?? '';
 
-  // Chart URL field + View Chart button
-  const chartUrl  = data?.chartUrl ?? '';
-  const urlInput  = document.getElementById('chartUrlInput');
-  const viewBtn   = document.getElementById('viewChartBtn');
-  urlInput.value  = chartUrl;
-  if (chartUrl) {
-    viewBtn.href         = chartUrl;
-    viewBtn.style.display = '';
-  } else {
-    viewBtn.style.display = 'none';
-  }
-
-  // Live-update the button as the user types a URL
-  urlInput.oninput = () => {
-    const v = urlInput.value.trim();
-    if (v) { viewBtn.href = v; viewBtn.style.display = ''; }
-    else   { viewBtn.style.display = 'none'; }
-  };
-
   updateModalBadge(data?.pnl);
   document.getElementById('saveFeedback').classList.remove('show');
   document.getElementById('saveValidationMsg').classList.remove('show');
@@ -1469,6 +1524,44 @@ function updateModalBadge(pnlRaw) {
   }
 }
 
+// ── Monthly Target ────────────────────────────────────────────────
+/**
+ * Reads the monthlyTargets map on the current account for the viewed
+ * month (YYYY-MM) and populates the input. Defaults to empty when unset.
+ */
+function loadMonthlyTarget() {
+  const input = document.getElementById('monthlyTargetInput');
+  if (!input) return;
+  const acc = getCurrentAccount();
+  const key = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
+  const target = acc?.monthlyTargets?.[key] ?? 0;
+  input.value = target > 0 ? target : '';
+}
+
+/**
+ * Persists the monthly target for the currently viewed month using
+ * Firestore updateDoc so only the specific YYYY-MM key is touched.
+ */
+async function saveMonthlyTarget() {
+  const acc = getCurrentAccount();
+  if (!acc) return;
+  const key   = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
+  const raw   = document.getElementById('monthlyTargetInput').value;
+  const value = parseFloat(raw) || 0;
+
+  if (!acc.monthlyTargets) acc.monthlyTargets = {};
+  acc.monthlyTargets[key] = value;
+
+  if (window.cloudSaveMonthlyTarget) {
+    try {
+      await window.cloudSaveMonthlyTarget(acc.id, key, value);
+      showToast(`Target saved for ${key} ✓`);
+    } catch {
+      showToast('Failed to save target — check connection');
+    }
+  }
+}
+
 function saveDay() {
   if (!activeDate) return;
   const acc = getCurrentAccount();
@@ -1477,7 +1570,6 @@ function saveDay() {
   const pnlRaw    = document.getElementById('pnlInput').value;
   const tradesRaw = document.getElementById('tradesInput').value;
   const notes     = document.getElementById('notesInput').value;
-  const chartUrl  = document.getElementById('chartUrlInput').value.trim();
   const msgEl     = document.getElementById('saveValidationMsg');
 
   const pnlFilled   = pnlRaw.trim() !== '';
@@ -1499,11 +1591,11 @@ function saveDay() {
 
   const numTrades = tradesValid ? parseInt(tradesRaw) : 0;
 
-  if (!pnlFilled && !tradesFilled && !notes.trim() && !chartUrl) {
+  if (!pnlFilled && !tradesFilled && !notes.trim()) {
     delete acc.logs[activeDate];
     if (window.cloudDeleteLog) window.cloudDeleteLog(acc.id, activeDate);
   } else {
-    const payload = { pnl: pnlRaw, numTrades, notes, ...(chartUrl && { chartUrl }) };
+    const payload = { pnl: pnlRaw, numTrades, notes };
     acc.logs[activeDate] = payload;
     if (window.cloudSaveLog) window.cloudSaveLog(acc.id, activeDate, payload);
   }
@@ -1512,12 +1604,13 @@ function saveDay() {
   fb.classList.add('show');
   setTimeout(() => fb.classList.remove('show'), 2000);
 
-  updateModalBadge(pnl);
+  updateModalBadge(pnlRaw);
   renderCalendar();
   renderStats();
   renderOverview();
   showToast('Entry saved ✓');
 }
+
 
 function clearDay() {
   if (!activeDate) return;
@@ -1530,9 +1623,6 @@ function clearDay() {
   document.getElementById('pnlInput').value    = '';
   document.getElementById('tradesInput').value = '';
   document.getElementById('notesInput').value  = '';
-  document.getElementById('chartUrlInput').value = '';
-  const viewBtn = document.getElementById('viewChartBtn');
-  if (viewBtn) { viewBtn.href = '#'; viewBtn.style.display = 'none'; }
   document.getElementById('saveValidationMsg').classList.remove('show');
   updateModalBadge(undefined);
 
@@ -1541,6 +1631,95 @@ function clearDay() {
   renderOverview();
   showToast('Day cleared');
 }
+
+// ── Manage Pairs Modal ────────────────────────────────────────────
+function openManagePairsModal() {
+  renderManagePairsList();
+  document.getElementById('newPairInput').value = '';
+  document.getElementById('managePairsOverlay').classList.add('active');
+  setTimeout(() => document.getElementById('newPairInput').focus(), 150);
+}
+
+function closeManagePairsModal() {
+  document.getElementById('managePairsOverlay').classList.remove('active');
+}
+
+function renderManagePairsList() {
+  const acc   = getCurrentAccount();
+  const pairs = (acc && acc.tradingPairs) ? [...acc.tradingPairs] : [];
+  const listEl = document.getElementById('pairManageList');
+  if (!listEl) return;
+
+  if (pairs.length === 0) {
+    listEl.innerHTML = '<div class="pair-manage-empty">No pairs yet. Add your first pair above.</div>';
+    return;
+  }
+
+  listEl.innerHTML = pairs.map((p, i) => `
+    <div class="pair-manage-item">
+      <span class="pair-manage-name">${p}</span>
+      <button class="pair-manage-del" data-index="${i}" title="Remove pair">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>`).join('');
+
+  listEl.querySelectorAll('.pair-manage-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.index);
+      removePair(idx);
+    });
+  });
+}
+
+function savePairsToFirestore(acc) {
+  if (!window.cloudSaveAccount) return;
+  window.cloudSaveAccount(acc.id, {
+    name:           acc.name,
+    baseline:       acc.baseline,
+    createdAt:      acc.createdAt,
+    biWeeklyTarget: acc.biWeeklyTarget || 0,
+    tradingPairs:   acc.tradingPairs   || [],
+  });
+}
+
+function addPair() {
+  const acc   = getCurrentAccount();
+  if (!acc) return;
+  const input = document.getElementById('newPairInput');
+  const val   = input.value.trim().toUpperCase();
+  if (!val) return;
+  if (!acc.tradingPairs) acc.tradingPairs = [];
+  if (acc.tradingPairs.includes(val)) {
+    showToast(`"${val}" already exists`);
+    return;
+  }
+  acc.tradingPairs.push(val);
+  savePairsToFirestore(acc);
+  input.value = '';
+  renderManagePairsList();
+  showToast(`"${val}" added ✓`);
+}
+
+function removePair(index) {
+  const acc = getCurrentAccount();
+  if (!acc || !acc.tradingPairs) return;
+  const removed = acc.tradingPairs.splice(index, 1)[0];
+  savePairsToFirestore(acc);
+  renderManagePairsList();
+  showToast(`"${removed}" removed`);
+}
+
+document.getElementById('managePairsClose').addEventListener('click', closeManagePairsModal);
+document.getElementById('managePairsDoneBtn').addEventListener('click', closeManagePairsModal);
+document.getElementById('managePairsOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeManagePairsModal();
+});
+document.getElementById('addPairBtn').addEventListener('click', addPair);
+document.getElementById('newPairInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addPair();
+});
 
 // ── Toast ─────────────────────────────────────────────────────────
 let toastTimer;
@@ -1576,6 +1755,7 @@ document.getElementById('prevMonth').addEventListener('click', () => {
   updateNavState();
   renderCalendar();
   renderStats();
+  loadMonthlyTarget();
 });
 
 document.getElementById('nextMonth').addEventListener('click', () => {
@@ -1584,6 +1764,7 @@ document.getElementById('nextMonth').addEventListener('click', () => {
   updateNavState();
   renderCalendar();
   renderStats();
+  loadMonthlyTarget();
 });
 
 document.getElementById('prevYear').addEventListener('click', () => {
@@ -1591,6 +1772,7 @@ document.getElementById('prevYear').addEventListener('click', () => {
   updateNavState();
   renderCalendar();
   renderStats();
+  loadMonthlyTarget();
 });
 
 document.getElementById('nextYear').addEventListener('click', () => {
@@ -1598,6 +1780,7 @@ document.getElementById('nextYear').addEventListener('click', () => {
   updateNavState();
   renderCalendar();
   renderStats();
+  loadMonthlyTarget();
 });
 
 document.getElementById('todayBtn').addEventListener('click', () => {
@@ -1606,6 +1789,7 @@ document.getElementById('todayBtn').addEventListener('click', () => {
   updateNavState();
   renderCalendar();
   renderStats();
+  loadMonthlyTarget();
 });
 
 document.getElementById('themeToggle').addEventListener('click', () => {
@@ -1661,6 +1845,7 @@ document.getElementById('modalOverlay').addEventListener('click', e => {
 document.getElementById('modalClose').addEventListener('click', closeModal);
 document.getElementById('saveDayBtn').addEventListener('click', saveDay);
 document.getElementById('clearDayBtn').addEventListener('click', clearDay);
+document.getElementById('saveMonthlyTargetBtn').addEventListener('click', saveMonthlyTarget);
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -1668,6 +1853,7 @@ document.addEventListener('keydown', e => {
     closeCreateAccountModal();
     closeAccountDropdown();
     closeMonthlyBreakdownModal();
+    closeManagePairsModal();
   }
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && activeDate) saveDay();
 
@@ -1681,12 +1867,12 @@ document.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') {
       viewMonth--;
       if (viewMonth < 0) { viewMonth = 11; viewYear--; }
-      updateNavState(); renderCalendar(); renderStats();
+      updateNavState(); renderCalendar(); renderStats(); loadMonthlyTarget();
     }
     if (e.key === 'ArrowRight') {
       viewMonth++;
       if (viewMonth > 11) { viewMonth = 0; viewYear++; }
-      updateNavState(); renderCalendar(); renderStats();
+      updateNavState(); renderCalendar(); renderStats(); loadMonthlyTarget();
     }
   }
 });
