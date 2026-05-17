@@ -1,7 +1,2 @@
-Added this changes txt so I can put more details for the changes I made for the system.
-So for this commit I remove the add link and choosing pair feature since it is not needed, in addition
-we're making the system simple but very helpful. 
-I just added the target for every month so I can track how close I am in getting my target hit. 
-
-For next fix, the bag icon for payout should have more proper alignment and position when it comes to
-phone view. In addition the calendar should have a good visualization by having good responsiveness.
+Changed the PNL calendar, make the payout tracker card have the option to be hide or shown.
+Furthermore the calendar ui is fix as well for phone users.

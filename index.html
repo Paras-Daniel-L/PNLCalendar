@@ -150,24 +150,32 @@
           <span class="payout-title">Payout Tracker</span>
           <span class="payout-badge">Prop Firm · 80/20 Split</span>
         </div>
-        <!-- Bi-Weekly Target input -->
-        <div class="payout-target-wrap">
-          <span class="payout-target-label">Bi-Weekly Target</span>
-          <div class="payout-target-input-row">
-            <span class="payout-target-prefix">$</span>
-            <input
-              type="number"
-              class="payout-target-input"
-              id="payoutTargetInput"
-              placeholder="0"
-              min="0"
-              step="100"
-              title="Click to set your bi-weekly profit target"
-            />
+        <div style="display:flex;align-items:center;gap:8px;">
+          <!-- Bi-Weekly Target input -->
+          <div class="payout-target-wrap">
+            <span class="payout-target-label">Bi-Weekly Target</span>
+            <div class="payout-target-input-row">
+              <span class="payout-target-prefix">$</span>
+              <input
+                type="number"
+                class="payout-target-input"
+                id="payoutTargetInput"
+                placeholder="0"
+                min="0"
+                step="100"
+                title="Click to set your bi-weekly profit target"
+              />
+            </div>
           </div>
+          <button id="payoutToggleBtn" class="overview-toggle" title="Collapse payout tracker">
+            <svg class="toggle-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="18 15 12 9 6 15"/>
+            </svg>
+            <span id="payoutToggleLabel">Hide</span>
+          </button>
         </div>
       </div>
-
+      <div id="payoutContent">
       <!-- Body: split breakdown + remaining -->
       <div class="payout-body" id="payoutBody">
 
@@ -256,7 +264,7 @@
           <div class="payout-history-list" id="payoutHistoryList"></div>
         </div>
       </div>
-
+      </div><!-- /payoutContent -->
     </div><!-- /payoutCard -->
 
     <!-- ── Account Overview Panel ───────────────────────────────── -->

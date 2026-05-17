@@ -586,7 +586,14 @@ function renderCalendar() {
         }
       }
 
-      el.addEventListener('click', () => openModal(cell.key, cell.d));
+      el.addEventListener('click', () => {
+        if (activeDate === cell.key) {
+          closeModal();         // same day clicked again → dismiss
+        } else {
+          openModal(cell.key, cell.d);
+        }
+      });
+
       grid.appendChild(el);
     });
 
@@ -719,7 +726,18 @@ function renderStats() {
 /**
  * Sync the bi-weekly target input from the current account's stored value.
  * Called whenever the active account changes (via syncCapitalInput path).
+ * 
  */
+
+// ── Payout Tracker collapse toggle ───────────────────────────────
+// ── Payout Tracker collapse toggle ───────────────────────────────
+document.getElementById('payoutToggleBtn').addEventListener('click', () => {
+  const card  = document.getElementById('payoutCard');
+  const label = document.getElementById('payoutToggleLabel');
+  const isCollapsed = card.classList.toggle('collapsed');
+  label.textContent = isCollapsed ? 'Show' : 'Hide';
+});
+
 function syncPayoutTarget() {
   const acc = getCurrentAccount();
   const target = acc ? (parseFloat(acc.biWeeklyTarget) || 0) : 0;
@@ -1609,6 +1627,7 @@ function saveDay() {
   renderStats();
   renderOverview();
   showToast('Entry saved ✓');
+  closeModal();
 }
 
 

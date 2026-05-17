@@ -2013,6 +2013,11 @@ body {
   .calendar-day.payday-mid  .payday-badge::after { content: '💰'; font-size: 0.75rem; }
   .calendar-day.payday-end  .payday-badge::after { content: '💰'; font-size: 0.75rem; }
 
+  /* Prevent absolute-positioned 💰 emoji from overlapping PNL text on payday cells */
+  .calendar-day.payday .day-pnl {
+    padding-left: 18px;
+  }
+
   .day-note-dot {
     top: 5px;
     right: 5px;
@@ -2710,7 +2715,25 @@ body {
 
 /* ================================================================
    PAYOUT TRACKER CARD
-   ================================================================ */
+   ================================================================ */  
+
+/* ── Payout Tracker collapsible ─────────────────────────────────── */
+#payoutContent {
+  max-height: 1200px;
+  overflow: hidden;
+  transition: max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity    0.22s ease;
+  opacity: 1;
+}
+
+.payout-card.collapsed #payoutContent {
+  max-height: 0;
+  opacity: 0;
+}
+
+.payout-card.collapsed .toggle-chevron {
+  transform: rotate(180deg);
+}
 
 /* ── Card container ─────────────────────────────────────────────── */
 .payout-card {
